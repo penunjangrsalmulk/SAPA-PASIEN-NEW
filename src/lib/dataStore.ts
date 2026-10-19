@@ -7,6 +7,10 @@ import {
   AuditLog,
   IssueStatus,
   UserRole,
+  HospitalProfile,
+  SlaSetting,
+  IssueCategorySetting,
+  IssuePriority,
 } from '../types';
 import { getSupabaseClient } from './supabase';
 
@@ -129,6 +133,124 @@ export const DEMO_ACCOUNTS: UserProfile[] = [
     is_active: true,
     created_at: '2026-01-01T08:00:00Z',
     updated_at: '2026-01-01T08:00:00Z',
+  },
+];
+
+export const INITIAL_HOSPITAL_PROFILE: HospitalProfile = {
+  name: 'RSUD Al-Mulk Kota Sukabumi',
+  classification: 'Rumah Sakit Umum Daerah Tipe D Pratama / Paripurna',
+  address: 'Jl. Pelabuhan II KM. 6, Kel. Cikondang, Kec. Citamiang, Kota Sukabumi, Jawa Barat',
+  phone: '(0266) 625-1000 / Layanan SAPA PASIEN ext. 104',
+  email: 'rsudalmulk@sukabumikota.go.id',
+  operational_status: 'Aktif Penuh (Layanan 24 Jam)',
+  vision: 'Mewujudkan pelayanan rawat inap yang menjunjung tinggi empati, komunikasi humanis, pemenuhan kebutuhan spiritual dan sosiologis, serta penyelesaian setiap keluhan pasien secara tuntas demi kepuasan warga Kota Sukabumi.',
+  logo_url: '/src/assets/images/rsud_almulk_logo_1792331924541.jpg',
+  updated_at: '2026-10-19T00:00:00Z',
+};
+
+export const INITIAL_SLA_SETTINGS: SlaSetting[] = [
+  {
+    priority: 'kritis',
+    label: 'Prioritas Kritis',
+    max_hours: 1,
+    description: 'Meliputi isu keselamatan pasien, insiden kegawatdaruratan, atau ancaman henti napas/jantung. Dilaporkan lisan langsung ke DPJP & Tim Medis.',
+    color_badge: 'red',
+  },
+  {
+    priority: 'tinggi',
+    label: 'Prioritas Tinggi',
+    max_hours: 6,
+    description: 'Meliputi kendala pasokan obat darurat, kegagalan listrik/alat bantu nafas di ruangan, atau kecemasan berat keluarga pasien.',
+    color_badge: 'amber',
+  },
+  {
+    priority: 'sedang',
+    label: 'Prioritas Sedang',
+    max_hours: 24,
+    description: 'Meliputi fasilitas fisik (AC kurang dingin, kran air macet), kendala administrasi jaminan BPJS, atau kebersihan kamar mandi.',
+    color_badge: 'blue',
+  },
+  {
+    priority: 'rendah',
+    label: 'Prioritas Rendah',
+    max_hours: 48,
+    description: 'Permintaan informasi umum, jadwal bimbingan rohani rutin, atau saran perbaikan non-urgent.',
+    color_badge: 'slate',
+  },
+];
+
+export const INITIAL_ISSUE_CATEGORIES: IssueCategorySetting[] = [
+  {
+    id: 'cat-1',
+    key: 'fasilitas',
+    name: 'Fasilitas & Sarana Prasarana',
+    description: 'Kelayakan tempat tidur, kran air, pencahayaan, AC/kipas, toilet dan bel pemanggil',
+    default_unit: 'Instalasi Pemeliharaan Sarana RS (IPSRS)',
+    is_active: true,
+  },
+  {
+    id: 'cat-2',
+    key: 'kebersihan',
+    name: 'Kebersihan & Sanitasi Lingkungan',
+    description: 'Kebersihan kamar rawat, sprei, kamar mandi pasien, dan pembuangan sampah medis',
+    default_unit: 'Sanitasi & Kesling RS',
+    is_active: true,
+  },
+  {
+    id: 'cat-3',
+    key: 'pelayanan',
+    name: 'Pelayanan Medis & Keperawatan',
+    description: 'Ketepatan visitasi dokter, kecepatan respon perawat, dan pemberian obat',
+    default_unit: 'Bidang Keperawatan & Pelayanan Medis',
+    is_active: true,
+  },
+  {
+    id: 'cat-4',
+    key: 'komunikasi',
+    name: 'Komunikasi & Edukasi Petugas',
+    description: 'Keramahan petugas, kejelasan informasi rencana asuhan, dan penjelasan obat',
+    default_unit: 'Humas & PKRS RSUD Al-Mulk',
+    is_active: true,
+  },
+  {
+    id: 'cat-5',
+    key: 'kenyamanan',
+    name: 'Kenyamanan & Ketenangan Ruangan',
+    description: 'Kebisingan malam hari, pembatasan pengunjung, suhu ruangan',
+    default_unit: 'Kepala Ruangan Rawat Inap & Keamanan',
+    is_active: true,
+  },
+  {
+    id: 'cat-6',
+    key: 'dukungan_sosial',
+    name: 'Dukungan Sosial & Keluarga',
+    description: 'Pendampingan pasien tanpa keluarga, kendala pembiayaan/sosial',
+    default_unit: 'Pekerja Sosial & Pelayanan Pasien',
+    is_active: true,
+  },
+  {
+    id: 'cat-7',
+    key: 'dukungan_psikologis',
+    name: 'Dukungan Psikologis Pasien',
+    description: 'Kecemasan menghadapi tindakan medis, ketakutan pasien/keluarga',
+    default_unit: 'Konselor / Psikolog Klinis RS',
+    is_active: true,
+  },
+  {
+    id: 'cat-8',
+    key: 'dukungan_spiritual',
+    name: 'Bimbingan & Fasilitasi Spiritual',
+    description: 'Permintaan rohaniwan, bimbingan doa, tayamum & perlengkapan ibadah',
+    default_unit: 'Tim Kerohanian & Bintal RSUD Al-Mulk',
+    is_active: true,
+  },
+  {
+    id: 'cat-9',
+    key: 'lainnya',
+    name: 'Lainnya / Masalah Umum',
+    description: 'Masalah lain di luar kategori standar di atas',
+    default_unit: 'Manajemen Mutu & Pengaduan',
+    is_active: true,
   },
 ];
 
@@ -465,12 +587,22 @@ const STORAGE_VISITS = 'sapa_visits_v4';
 const STORAGE_ISSUES = 'sapa_issues_v4';
 const STORAGE_AUDIT = 'sapa_audit_v4';
 const STORAGE_CURRENT_USER = 'sapa_current_user_v1';
+const STORAGE_WARDS = 'sapa_wards_v4';
+const STORAGE_USERS = 'sapa_users_v4';
+const STORAGE_HOSPITAL_PROFILE = 'sapa_hospital_profile_v1';
+const STORAGE_SLA_SETTINGS = 'sapa_sla_settings_v1';
+const STORAGE_ISSUE_CATEGORIES = 'sapa_issue_categories_v1';
 
 export class DataStore {
   private static visits: Visit[] = [];
   private static issues: Issue[] = [];
   private static auditLogs: AuditLog[] = [];
   private static currentUser: UserProfile = DEMO_ACCOUNTS[0]; // Default Admin
+  private static wards: Ward[] = [];
+  private static users: UserProfile[] = [];
+  private static hospitalProfile: HospitalProfile = INITIAL_HOSPITAL_PROFILE;
+  private static slaSettings: SlaSetting[] = [];
+  private static issueCategories: IssueCategorySetting[] = [];
   private static listeners: Array<() => void> = [];
 
   static init() {
@@ -524,6 +656,71 @@ export class DataStore {
         this.currentUser = DEMO_ACCOUNTS[0];
       }
     }
+
+    // Load wards
+    const storedWards = localStorage.getItem(STORAGE_WARDS);
+    if (storedWards) {
+      try {
+        this.wards = JSON.parse(storedWards);
+      } catch {
+        this.wards = [...INITIAL_WARDS];
+      }
+    } else {
+      this.wards = [...INITIAL_WARDS];
+      this.saveWards();
+    }
+
+    // Load users
+    const storedUsers = localStorage.getItem(STORAGE_USERS);
+    if (storedUsers) {
+      try {
+        this.users = JSON.parse(storedUsers);
+      } catch {
+        this.users = [...DEMO_ACCOUNTS];
+      }
+    } else {
+      this.users = [...DEMO_ACCOUNTS];
+      this.saveUsers();
+    }
+
+    // Load hospital profile
+    const storedProfile = localStorage.getItem(STORAGE_HOSPITAL_PROFILE);
+    if (storedProfile) {
+      try {
+        this.hospitalProfile = JSON.parse(storedProfile);
+      } catch {
+        this.hospitalProfile = { ...INITIAL_HOSPITAL_PROFILE };
+      }
+    } else {
+      this.hospitalProfile = { ...INITIAL_HOSPITAL_PROFILE };
+      this.saveHospitalProfile();
+    }
+
+    // Load SLA settings
+    const storedSla = localStorage.getItem(STORAGE_SLA_SETTINGS);
+    if (storedSla) {
+      try {
+        this.slaSettings = JSON.parse(storedSla);
+      } catch {
+        this.slaSettings = [...INITIAL_SLA_SETTINGS];
+      }
+    } else {
+      this.slaSettings = [...INITIAL_SLA_SETTINGS];
+      this.saveSlaSettings();
+    }
+
+    // Load issue categories
+    const storedCategories = localStorage.getItem(STORAGE_ISSUE_CATEGORIES);
+    if (storedCategories) {
+      try {
+        this.issueCategories = JSON.parse(storedCategories);
+      } catch {
+        this.issueCategories = [...INITIAL_ISSUE_CATEGORIES];
+      }
+    } else {
+      this.issueCategories = [...INITIAL_ISSUE_CATEGORIES];
+      this.saveIssueCategories();
+    }
   }
 
   private static saveVisits() {
@@ -544,6 +741,36 @@ export class DataStore {
     }
   }
 
+  private static saveWards() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_WARDS, JSON.stringify(this.wards));
+    }
+  }
+
+  private static saveUsers() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_USERS, JSON.stringify(this.users));
+    }
+  }
+
+  private static saveHospitalProfile() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_HOSPITAL_PROFILE, JSON.stringify(this.hospitalProfile));
+    }
+  }
+
+  private static saveSlaSettings() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_SLA_SETTINGS, JSON.stringify(this.slaSettings));
+    }
+  }
+
+  private static saveIssueCategories() {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_ISSUE_CATEGORIES, JSON.stringify(this.issueCategories));
+    }
+  }
+
   static subscribe(callback: () => void) {
     this.listeners.push(callback);
     return () => {
@@ -561,7 +788,29 @@ export class DataStore {
     }
   }
 
-  // Auth User
+  // --- Hospital Profile ---
+  static getHospitalProfile(): HospitalProfile {
+    return { ...this.hospitalProfile };
+  }
+
+  static updateHospitalProfile(updates: Partial<HospitalProfile>) {
+    this.hospitalProfile = {
+      ...this.hospitalProfile,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.saveHospitalProfile();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'UPDATE_HOSPITAL_PROFILE',
+      table_name: 'hospital_profile',
+      metadata: { fields: Object.keys(updates) },
+    });
+    this.notify();
+  }
+
+  // --- Auth & Users ---
   static getCurrentUser(): UserProfile {
     return this.currentUser;
   }
@@ -582,13 +831,242 @@ export class DataStore {
     this.notify();
   }
 
-  // Wards
+  static getUsers(): UserProfile[] {
+    return [...this.users];
+  }
+
+  static getUserById(id: string): UserProfile | undefined {
+    return this.users.find((u) => u.id === id);
+  }
+
+  static createUser(user: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): UserProfile {
+    const newUser: UserProfile = {
+      ...user,
+      id: `usr-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.users.push(newUser);
+    this.saveUsers();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'CREATE_USER',
+      table_name: 'profiles',
+      record_id: newUser.id,
+      metadata: { name: newUser.full_name, role: newUser.role, email: newUser.email },
+    });
+    this.notify();
+    return newUser;
+  }
+
+  static updateUser(id: string, updates: Partial<UserProfile>): boolean {
+    const index = this.users.findIndex((u) => u.id === id);
+    if (index === -1) return false;
+
+    this.users[index] = {
+      ...this.users[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+
+    // If active user updated, sync currentUser
+    if (this.currentUser.id === id) {
+      this.currentUser = { ...this.users[index] };
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_CURRENT_USER, JSON.stringify(this.currentUser));
+      }
+    }
+
+    this.saveUsers();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'UPDATE_USER',
+      table_name: 'profiles',
+      record_id: id,
+      metadata: { updates },
+    });
+    this.notify();
+    return true;
+  }
+
+  static deleteUser(id: string): boolean {
+    if (this.currentUser.id === id) {
+      return false; // Cannot delete currently logged in user
+    }
+    const user = this.users.find((u) => u.id === id);
+    if (!user) return false;
+
+    this.users = this.users.filter((u) => u.id !== id);
+    this.saveUsers();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'DELETE_USER',
+      table_name: 'profiles',
+      record_id: id,
+      metadata: { name: user.full_name, role: user.role },
+    });
+    this.notify();
+    return true;
+  }
+
+  // --- Wards ---
   static getWards(): Ward[] {
-    return INITIAL_WARDS;
+    return [...this.wards];
   }
 
   static getWardById(id: string): Ward | undefined {
-    return INITIAL_WARDS.find((w) => w.id === id);
+    return this.wards.find((w) => w.id === id);
+  }
+
+  static createWard(ward: Omit<Ward, 'id' | 'created_at' | 'updated_at'>): Ward {
+    const newWard: Ward = {
+      ...ward,
+      id: `ward-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.wards.push(newWard);
+    this.saveWards();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'CREATE_WARD',
+      table_name: 'wards',
+      record_id: newWard.id,
+      metadata: { name: newWard.name, code: newWard.code, capacity: newWard.capacity },
+    });
+    this.notify();
+    return newWard;
+  }
+
+  static updateWard(id: string, updates: Partial<Ward>): boolean {
+    const index = this.wards.findIndex((w) => w.id === id);
+    if (index === -1) return false;
+
+    this.wards[index] = {
+      ...this.wards[index],
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    this.saveWards();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'UPDATE_WARD',
+      table_name: 'wards',
+      record_id: id,
+      metadata: { updates },
+    });
+    this.notify();
+    return true;
+  }
+
+  static deleteWard(id: string): boolean {
+    const ward = this.wards.find((w) => w.id === id);
+    if (!ward) return false;
+
+    this.wards = this.wards.filter((w) => w.id !== id);
+    this.saveWards();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'DELETE_WARD',
+      table_name: 'wards',
+      record_id: id,
+      metadata: { name: ward.name, code: ward.code },
+    });
+    this.notify();
+    return true;
+  }
+
+  // --- SLA Settings & Categories ---
+  static getSlaSettings(): SlaSetting[] {
+    return [...this.slaSettings];
+  }
+
+  static updateSlaSetting(priority: IssuePriority, updates: Partial<SlaSetting>): boolean {
+    const index = this.slaSettings.findIndex((s) => s.priority === priority);
+    if (index === -1) return false;
+
+    this.slaSettings[index] = {
+      ...this.slaSettings[index],
+      ...updates,
+    };
+    this.saveSlaSettings();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'UPDATE_SLA',
+      table_name: 'sla_settings',
+      metadata: { priority, updates },
+    });
+    this.notify();
+    return true;
+  }
+
+  static getIssueCategories(): IssueCategorySetting[] {
+    return [...this.issueCategories];
+  }
+
+  static createIssueCategory(category: Omit<IssueCategorySetting, 'id'>): IssueCategorySetting {
+    const newCat: IssueCategorySetting = {
+      ...category,
+      id: `cat-${Date.now()}`,
+    };
+    this.issueCategories.push(newCat);
+    this.saveIssueCategories();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'CREATE_ISSUE_CATEGORY',
+      table_name: 'issue_categories',
+      record_id: newCat.id,
+      metadata: { name: newCat.name, key: newCat.key },
+    });
+    this.notify();
+    return newCat;
+  }
+
+  static updateIssueCategory(id: string, updates: Partial<IssueCategorySetting>): boolean {
+    const index = this.issueCategories.findIndex((c) => c.id === id);
+    if (index === -1) return false;
+
+    this.issueCategories[index] = {
+      ...this.issueCategories[index],
+      ...updates,
+    };
+    this.saveIssueCategories();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'UPDATE_ISSUE_CATEGORY',
+      table_name: 'issue_categories',
+      record_id: id,
+      metadata: { updates },
+    });
+    this.notify();
+    return true;
+  }
+
+  static deleteIssueCategory(id: string): boolean {
+    const cat = this.issueCategories.find((c) => c.id === id);
+    if (!cat) return false;
+
+    this.issueCategories = this.issueCategories.filter((c) => c.id !== id);
+    this.saveIssueCategories();
+    this.addAuditLog({
+      actor_id: this.currentUser.id,
+      actor_name: this.currentUser.full_name,
+      action: 'DELETE_ISSUE_CATEGORY',
+      table_name: 'issue_categories',
+      record_id: id,
+      metadata: { name: cat.name },
+    });
+    this.notify();
+    return true;
   }
 
   // Visits
@@ -926,9 +1404,19 @@ export class DataStore {
     this.visits = [...INITIAL_VISITS];
     this.issues = [...INITIAL_ISSUES];
     this.auditLogs = [...INITIAL_AUDIT_LOGS];
+    this.wards = [...INITIAL_WARDS];
+    this.users = [...DEMO_ACCOUNTS];
+    this.hospitalProfile = { ...INITIAL_HOSPITAL_PROFILE };
+    this.slaSettings = [...INITIAL_SLA_SETTINGS];
+    this.issueCategories = [...INITIAL_ISSUE_CATEGORIES];
     this.saveVisits();
     this.saveIssues();
     this.saveAudit();
+    this.saveWards();
+    this.saveUsers();
+    this.saveHospitalProfile();
+    this.saveSlaSettings();
+    this.saveIssueCategories();
     this.notify();
   }
 }

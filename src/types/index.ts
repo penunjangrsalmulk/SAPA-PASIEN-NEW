@@ -7,9 +7,22 @@ export interface UserProfile {
   role: UserRole;
   department?: string;
   phone?: string;
+  avatar_url?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface HospitalProfile {
+  name: string;
+  classification: string;
+  address: string;
+  phone: string;
+  email?: string;
+  operational_status: string;
+  vision: string;
+  logo_url: string;
+  updated_at?: string;
 }
 
 export interface Ward {
@@ -21,6 +34,23 @@ export interface Ward {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface SlaSetting {
+  priority: IssuePriority;
+  label: string;
+  max_hours: number;
+  description: string;
+  color_badge: string;
+}
+
+export interface IssueCategorySetting {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  default_unit?: string;
+  is_active: boolean;
 }
 
 export type SocialObservationKey =

@@ -20,12 +20,14 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ currentTab, onOpenSupabaseModal }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile>(DataStore.getCurrentUser());
+  const [users, setUsers] = useState<UserProfile[]>(DataStore.getUsers());
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
 
   useEffect(() => {
     const unsub = DataStore.subscribe(() => {
       setCurrentUser(DataStore.getCurrentUser());
+      setUsers(DataStore.getUsers());
     });
 
     const creds = getSupabaseCredentials();
@@ -131,7 +133,7 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onOpenSupabaseModal 
               </div>
 
               <div className="p-1 space-y-1">
-                {DEMO_ACCOUNTS.map((account) => {
+                {users.map((account) => {
                   const isActive = account.id === currentUser.id;
                   return (
                     <button

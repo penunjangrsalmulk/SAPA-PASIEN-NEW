@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardPen,
@@ -9,7 +9,8 @@ import {
   HeartHandshake,
   CheckCircle,
 } from 'lucide-react';
-import { UserRole } from '../../types';
+import { UserRole, HospitalProfile } from '../../types';
+import { DataStore } from '../../lib/dataStore';
 
 interface SidebarProps {
   currentTab: string;
@@ -26,6 +27,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
 }) => {
+  const [hospitalProfile, setHospitalProfile] = useState<HospitalProfile>(
+    DataStore.getHospitalProfile()
+  );
+
+  useEffect(() => {
+    const unsub = DataStore.subscribe(() => {
+      setHospitalProfile(DataStore.getHospitalProfile());
+    });
+    return () => unsub();
+  }, []);
   const navItems = [
     {
       id: 'dashboard',
@@ -79,21 +90,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="p-5 border-b border-slate-100 flex items-center gap-3">
           <img
-            src="/src/assets/images/rsud_almulk_logo_1792331924541.jpg"
-            alt="Logo RSUD Al-Mulk"
-            className="w-10 h-10 object-contain rounded-lg border border-slate-100"
+            src={hospitalProfile.logo_url || "/src/assets/images/rsud_almulk_logo_1792331924541.jpg"}
+            alt={hospitalProfile.name}
+            className="w-10 h-10 object-contain rounded-lg border border-slate-100 bg-white"
             referrerPolicy="no-referrer"
             onError={(e) => {
               // Graceful SVG fallback
               (e.currentTarget as HTMLElement).style.display = 'none';
             }}
           />
-          <div>
-            <div className="flex items-center gap-1.5 font-bold text-slate-900 text-base tracking-tight">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 text-base tracking-tight truncate">
               <span>SAPA PASIEN</span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium">
-              RSUD Al-Mulk Kota Sukabumi
+            <p className="text-[11px] text-slate-500 font-medium truncate" title={hospitalProfile.name}>
+              {hospitalProfile.name}
             </p>
           </div>
         </div>
