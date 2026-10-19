@@ -1,0 +1,6 @@
+{
+  "name": "SAPA PASIEN — RSUD Al-Mulk",
+  "description": "Sistem Monitoring Kunjungan dan Kepuasan Pasien Rawat Inap RSUD Al-Mulk Kota Sukabumi dengan integrasi database, observasi multidimensi, eskalasi masalah, dan analitik pelayanan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
