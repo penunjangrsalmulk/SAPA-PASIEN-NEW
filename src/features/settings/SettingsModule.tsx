@@ -27,6 +27,12 @@ import {
   MapPin,
   Tag,
   Check,
+  Download,
+  UploadCloud,
+  FileJson,
+  Globe,
+  HelpCircle,
+  Send,
 } from 'lucide-react';
 import {
   Ward,
@@ -428,6 +434,58 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [copiedMigration, setCopiedMigration] = useState(false);
+  const [copiedCodeSnippet, setCopiedCodeSnippet] = useState(false);
+  const jsonImportRef = useRef<HTMLInputElement>(null);
+
+  const handleExportJson = () => {
+    try {
+      const dataStr = DataStore.exportAllData();
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `sapa_pasien_data_rsudalmulk_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast('File cadangan data lengkap (JSON) berhasil diunduh.');
+    } catch {
+      showToast('Gagal mengekspor data.', 'error');
+    }
+  };
+
+  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      const res = DataStore.importAllData(content);
+      if (res.success) {
+        showToast(res.message, 'success');
+      } else {
+        showToast(res.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  const handleCopySourceCodeDefaults = () => {
+    const snippet = `// Master Data Default untuk src/lib/dataStore.ts
+export const INITIAL_HOSPITAL_PROFILE: HospitalProfile = ${JSON.stringify(hospitalProfile, null, 2)};
+
+export const INITIAL_WARDS: Ward[] = ${JSON.stringify(wards, null, 2)};
+
+export const DEMO_ACCOUNTS: UserProfile[] = ${JSON.stringify(users, null, 2)};
+`;
+    navigator.clipboard.writeText(snippet);
+    setCopiedCodeSnippet(true);
+    showToast('Kode konfigurasi master data berhasil disalin ke clipboard!');
+    setTimeout(() => setCopiedCodeSnippet(false), 3000);
+  };
 
   const handleTestSupabase = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -504,7 +562,7 @@ ON CONFLICT (code) DO NOTHING;
     { id: 'users', label: 'Pengguna & Otoritas', icon: Users, badge: users.length },
     { id: 'wards', label: 'Master Ruangan', icon: Layers, badge: wards.length },
     { id: 'categories', label: 'Kategori & SLA', icon: Clock },
-    { id: 'database', label: 'Integrasi Supabase', icon: Database },
+    { id: 'database', label: 'Sinkronisasi Cloud & Vercel', icon: Globe },
     { id: 'audit', label: 'Jejak Audit', icon: History, badge: auditLogs.length },
   ];
 
@@ -1369,98 +1427,240 @@ ON CONFLICT (code) DO NOTHING;
       )}
 
       {/* ==================================================================== */}
-      {/* TAB 5: INTEGRASI SUPABASE */}
+      {/* ==================================================================== */}
+      {/* TAB 5: SINKRONISASI CLOUD & VERCEL */}
       {/* ==================================================================== */}
       {activeTab === 'database' && (
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-6 shadow-xs">
-          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">
-                Pusat Koneksi & Integrasi Supabase PostgreSQL
-              </h3>
-              <p className="text-xs text-slate-500">
-                Konektivitas cloud database, migrasi tabel, dan sinkronisasi realtime
-              </p>
+        <div className="space-y-6">
+          {/* Penjelasan Transparan: Mengapa Data Tidak Langsung Muncul di Vercel */}
+          <div className="bg-amber-50 border border-amber-200 p-5 rounded-2xl space-y-2.5">
+            <div className="flex items-start gap-3">
+              <HelpCircle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-bold text-amber-900">
+                  Mengapa perubahan edit di Google AI Studio tidak langsung muncul di Vercel?
+                </h4>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  Aplikasi web ini menggunakan penyimpanan lokal peramban (<strong>localStorage</strong>) untuk kecepatan dan privasi data. Karena domain preview AI Studio (<code className="bg-amber-100 px-1 rounded text-amber-900 font-mono text-[11px]">*.run.app</code>) dan domain Vercel (<code className="bg-amber-100 px-1 rounded text-amber-900 font-mono text-[11px]">*.vercel.app</code>) adalah <strong>domain yang berbeda</strong>, peramban (browser) memisahkan penyimpanan datanya secara ketat demi keamanan (aturan <em>Same-Origin Policy</em>).
+                </p>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  Pilih salah satu dari <strong>3 solusi mudah</strong> di bawah ini untuk menyinkronkan data Anda ke Vercel:
+                </p>
+              </div>
             </div>
-            <button
-              onClick={onOpenSupabaseModal}
-              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs rounded-lg transition-colors self-start sm:self-auto"
-            >
-              Buka Pengaturan Cepat
-            </button>
           </div>
 
-          <form onSubmit={handleTestSupabase} className="space-y-4 max-w-xl text-xs">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Supabase Project URL
-              </label>
-              <input
-                type="url"
-                placeholder="https://xyzproject.supabase.co"
-                value={supabaseUrl}
-                onChange={(e) => setSupabaseUrl(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
-              />
+          {/* OPSI 1: EKSPOR & IMPOR FILE JSON (INSTAN & TANPA SETUP) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-blue-100 text-blue-800 font-bold text-[10px] rounded uppercase">
+                    Solusi 1 (Paling Cepat)
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Ekspor & Impor Cadangan Data (JSON)
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Unduh seluruh konfigurasi hasil editan dari AI Studio ini, lalu cukup unggah di Vercel dalam 1 klik
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Supabase Anon / Public Key
-              </label>
-              <input
-                type="password"
-                placeholder="eyJhbGciOiJIUzI1NiIsIn..."
-                value={supabaseKey}
-                onChange={(e) => setSupabaseKey(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
-              />
-            </div>
-
-            {testResult && (
-              <div
-                className={`p-3 rounded-lg flex items-start gap-2.5 ${
-                  testResult.success
-                    ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                    : 'bg-red-50 text-red-900 border border-red-200'
-                }`}
-              >
-                {testResult.success ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {/* Unduh Cadangan dari AI Studio */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 flex flex-col justify-between">
                 <div>
-                  <p className="font-semibold">{testResult.success ? 'Berhasil' : 'Perhatian'}</p>
-                  <p className="mt-0.5 leading-relaxed">{testResult.message}</p>
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <Download className="w-4 h-4 text-blue-600" />
+                    <span>Langkah 1: Unduh Cadangan dari AI Studio</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] mt-1 leading-relaxed">
+                    Menyimpan seluruh profil RS, foto/logo, pengguna akun, master 7 ruangan, standar waktu SLA, dan riwayat kunjungan ke dalam 1 file JSON siap pakai.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportJson}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Unduh File Cadangan Data (.json)</span>
+                </button>
+              </div>
+
+              {/* Unggah / Pulihkan di Vercel */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 font-bold text-slate-900">
+                    <UploadCloud className="w-4 h-4 text-emerald-600" />
+                    <span>Langkah 2: Pulihkan di Aplikasi Vercel Anda</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] mt-1 leading-relaxed">
+                    Buka situs Vercel Anda, masuk ke tab ini, lalu pilih file JSON yang telah diunduh. Seluruh profil, foto, pengguna, dan ruangan seketika terisi otomatis!
+                  </p>
+                </div>
+                <div>
+                  <input
+                    type="file"
+                    ref={jsonImportRef}
+                    onChange={handleImportJson}
+                    accept=".json,application/json"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => jsonImportRef.current?.click()}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
+                  >
+                    <UploadCloud className="w-4 h-4" />
+                    <span>Pilih & Impor File JSON ke Sini</span>
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+          </div>
 
-            <div className="flex items-center gap-2 pt-2">
+          {/* OPSI 2: CLOUD SUPABASE DATABASE (SINKRONISASI REALTIME OTOMATIS) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-5 shadow-xs">
+            <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 font-bold text-[10px] rounded uppercase">
+                    Solusi 2 (Otomatis & Realtime)
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Hubungkan Cloud Database Supabase PostgreSQL
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Dengan menghubungkan Supabase, data di AI Studio dan Vercel otomatis tersinkron ke cloud yang sama
+                </p>
+              </div>
               <button
-                type="submit"
-                disabled={isTesting}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                onClick={onOpenSupabaseModal}
+                className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-medium text-xs rounded-lg transition-colors self-start sm:self-auto"
               >
-                {isTesting ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Database className="w-3.5 h-3.5" />
-                )}
-                <span>{isTesting ? 'Menguji...' : 'Uji & Simpan Koneksi'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={copyMigrationSql}
-                className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>{copiedMigration ? 'Tersalin!' : 'Salin SQL Migrasi'}</span>
+                Buka Modal Wizard Supabase
               </button>
             </div>
-          </form>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+              <span className="font-bold text-slate-800 block">
+                Cara Menghubungkan ke Vercel:
+              </span>
+              <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px] leading-relaxed">
+                <li>Buka dashboard proyek Anda di <strong>Vercel.com</strong> &gt; Pilih proyek &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong>.</li>
+                <li>Tambahkan variabel: <code className="font-mono text-blue-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">VITE_SUPABASE_URL</code> dan <code className="font-mono text-blue-700 bg-white px-1.5 py-0.5 rounded border border-slate-200">VITE_SUPABASE_ANON_KEY</code>.</li>
+                <li>Lakukan <strong>Redeploy</strong> di Vercel. Keduanya akan otomatis membaca dan menyimpan ke cloud PostgreSQL yang sama.</li>
+              </ol>
+            </div>
+
+            <form onSubmit={handleTestSupabase} className="space-y-4 max-w-xl text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Supabase Project URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://xyzproject.supabase.co"
+                  value={supabaseUrl}
+                  onChange={(e) => setSupabaseUrl(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Supabase Anon / Public Key
+                </label>
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOiJIUzI1NiIsIn..."
+                  value={supabaseKey}
+                  onChange={(e) => setSupabaseKey(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono"
+                />
+              </div>
+
+              {testResult && (
+                <div
+                  className={`p-3 rounded-lg flex items-start gap-2.5 ${
+                    testResult.success
+                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
+                      : 'bg-red-50 text-red-900 border border-red-200'
+                  }`}
+                >
+                  {testResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                  )}
+                  <div>
+                    <p className="font-semibold">{testResult.success ? 'Berhasil' : 'Perhatian'}</p>
+                    <p className="mt-0.5 leading-relaxed">{testResult.message}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isTesting}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                >
+                  {isTesting ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Database className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTesting ? 'Menguji...' : 'Uji & Simpan Koneksi'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={copyMigrationSql}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>{copiedMigration ? 'Tersalin!' : 'Salin SQL Migrasi'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* OPSI 3: SALIN MASTER DATA DEFAULT KE KODE REPOSITORY */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4 shadow-xs">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 font-bold text-[10px] rounded uppercase">
+                    Solusi 3 (Permanen di Kode Sumber)
+                  </span>
+                  <h3 className="text-sm font-bold text-slate-900">
+                    Tanamkan Master Data ke Kode Sumber GitHub
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Salin konfigurasi aktif saat ini untuk dijadikan data bawaan awal permanen di file <code className="font-mono text-slate-700">src/lib/dataStore.ts</code>
+                </p>
+              </div>
+            </div>
+
+            <p className="text-slate-600 text-xs leading-relaxed">
+              Jika Anda ingin hasil editan Anda langsung tampil sebagai default bagi setiap pengunjung baru di Vercel tanpa perlu impor file JSON maupun database Supabase, Anda dapat menyalin data aktif saat ini ke clipboard dan menyimpannya ke kode sumber repositori:
+            </p>
+
+            <button
+              type="button"
+              onClick={handleCopySourceCodeDefaults}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>{copiedCodeSnippet ? 'Tersalin ke Clipboard!' : 'Salin Data Aktif ke Format Kode TypeScript'}</span>
+            </button>
+          </div>
         </div>
       )}
 

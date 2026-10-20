@@ -721,6 +721,9 @@ export class DataStore {
       this.issueCategories = [...INITIAL_ISSUE_CATEGORIES];
       this.saveIssueCategories();
     }
+
+    // Attempt cloud sync if Supabase is connected
+    this.syncFromSupabase();
   }
 
   private static saveVisits() {
@@ -1397,6 +1400,118 @@ export class DataStore {
 
     this.notify();
     return true;
+  }
+
+  // Cloud Sync with Supabase (if connected)
+  static async syncFromSupabase() {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+      // 1. Fetch remote wards
+      const { data: remoteWards, error: wardError } = await supabase
+        .from('wards')
+        .select('*')
+        .order('floor', { ascending: true });
+
+      if (!wardError && remoteWards && remoteWards.length > 0) {
+        this.wards = remoteWards;
+        this.saveWards();
+      }
+
+      // 2. Fetch remote profiles
+      const { data: remoteProfiles, error: profError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (!profError && remoteProfiles && remoteProfiles.length > 0) {
+        this.users = remoteProfiles;
+        this.saveUsers();
+      }
+
+      this.notify();
+    } catch (err) {
+      console.warn('Supabase cloud auto-sync notice:', err);
+    }
+  }
+
+  // Export entire application state (for instant migration between AI Studio & Vercel)
+  static exportAllData(): string {
+    const payload = {
+      app: 'SAPA_PASIEN_RSUD_AL_MULK',
+      version: 1,
+      exported_at: new Date().toISOString(),
+      hospitalProfile: this.hospitalProfile,
+      users: this.users,
+      wards: this.wards,
+      slaSettings: this.slaSettings,
+      issueCategories: this.issueCategories,
+      visits: this.visits,
+      issues: this.issues,
+      auditLogs: this.auditLogs,
+    };
+    return JSON.stringify(payload, null, 2);
+  }
+
+  // Import entire application state
+  static importAllData(jsonString: string): { success: boolean; message: string } {
+    try {
+      const data = JSON.parse(jsonString);
+      if (!data || typeof data !== 'object') {
+        return { success: false, message: 'Format data JSON tidak valid.' };
+      }
+
+      if (data.hospitalProfile) {
+        this.hospitalProfile = { ...INITIAL_HOSPITAL_PROFILE, ...data.hospitalProfile };
+        this.saveHospitalProfile();
+      }
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        this.users = data.users;
+        this.saveUsers();
+      }
+      if (Array.isArray(data.wards) && data.wards.length > 0) {
+        this.wards = data.wards;
+        this.saveWards();
+      }
+      if (Array.isArray(data.slaSettings) && data.slaSettings.length > 0) {
+        this.slaSettings = data.slaSettings;
+        this.saveSlaSettings();
+      }
+      if (Array.isArray(data.issueCategories) && data.issueCategories.length > 0) {
+        this.issueCategories = data.issueCategories;
+        this.saveIssueCategories();
+      }
+      if (Array.isArray(data.visits)) {
+        this.visits = data.visits;
+        this.saveVisits();
+      }
+      if (Array.isArray(data.issues)) {
+        this.issues = data.issues;
+        this.saveIssues();
+      }
+      if (Array.isArray(data.auditLogs)) {
+        this.auditLogs = data.auditLogs;
+        this.saveAudit();
+      }
+
+      this.addAuditLog({
+        actor_id: this.currentUser.id,
+        actor_name: this.currentUser.full_name,
+        action: 'IMPORT_ALL_DATA',
+        table_name: 'system',
+        metadata: { imported_at: new Date().toISOString() },
+      });
+
+      this.notify();
+      return {
+        success: true,
+        message: 'Seluruh konfigurasi profil, pengguna, master ruangan, SLA, dan kunjungan berhasil dipulihkan!',
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: `Gagal membaca file JSON: ${msg}` };
+    }
   }
 
   // Reset to initial demo data (for testing)
