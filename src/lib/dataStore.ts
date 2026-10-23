@@ -12,9 +12,9 @@ import {
   IssueCategorySetting,
   IssuePriority,
 } from '../types';
-import { getSupabaseClient } from './supabase';
+import { getSupabaseClient, isSupabaseConfigured } from './supabase';
 
-// Initial Wards for RSUD Al-Mulk Kota Sukabumi
+// Master Ruangan Rawat Inap RSUD Al-Mulk Kota Sukabumi
 export const INITIAL_WARDS: Ward[] = [
   {
     id: 'ward-01',
@@ -88,7 +88,7 @@ export const INITIAL_WARDS: Ward[] = [
   },
 ];
 
-// Demo accounts for instant role-based preview and verification
+// Akun Pengguna & Hak Akses RSUD Al-Mulk
 export const DEMO_ACCOUNTS: UserProfile[] = [
   {
     id: 'usr-admin-01',
@@ -437,8 +437,6 @@ const INITIAL_ISSUES: Issue[] = [
     assigned_to: 'Tim Teknisi Pendingin IPSRS',
     initial_action: 'Sudah dilaporkan via tiket internal IPSRS dan teknisi sedang menuju ruangan.',
     due_at: '2026-10-18T16:00:00Z',
-    resolved_at: undefined,
-    resolution_notes: undefined,
     created_at: '2026-10-18T09:30:00Z',
     updated_at: '2026-10-18T10:15:00Z',
     patient_name: 'Bpk. Deden Kurniawan',
@@ -450,11 +448,11 @@ const INITIAL_ISSUES: Issue[] = [
       {
         id: 'log-01',
         issue_id: 'iss-201',
-        action_description: 'Masalah dilaporkan dan dibuatkan tiket perbaikan ke IPSRS.',
+        action_description: 'Teknisi IPSRS telah memeriksa evaporator dan melakukan pembersihan filter.',
         status_after_action: 'dalam_proses',
         actor_id: 'usr-staff-01',
         actor_name: 'Budi Santoso, Amd.Kep',
-        created_at: '2026-10-18T09:35:00Z',
+        created_at: '2026-10-18T10:15:00Z',
       },
     ],
   },
@@ -462,12 +460,12 @@ const INITIAL_ISSUES: Issue[] = [
     id: 'iss-202',
     visit_id: 'vis-103',
     category: 'dukungan_sosial',
-    description: 'Bantuan verifikasi kepesertaan jaminan daerah dan pendampingan rohani pasien anak.',
+    description: 'Pasien membutuhkan bantuan advokasi jaminan kesehatan daerah dan bimbingan rohani.',
     priority: 'tinggi',
     status: 'belum_ditindaklanjuti',
-    assigned_unit: 'Bagian Humas & Pemasaran / Bina Rohani',
-    assigned_to: 'Petugas Bimbingan Rohani & Sosial',
-    initial_action: 'Mencatat data keluarga dan menjadwalkan kunjungan rohaniwan pukul 13.00.',
+    assigned_unit: 'Tim Pekerja Sosial & Kerohanian',
+    assigned_to: 'Petugas Bintal RS',
+    initial_action: 'Koordinasi berkas kepesertaan jaminan dan penjadwalan bimbingan doa.',
     due_at: '2026-10-18T14:00:00Z',
     created_at: '2026-10-18T10:20:00Z',
     updated_at: '2026-10-18T10:20:00Z',
@@ -482,15 +480,15 @@ const INITIAL_ISSUES: Issue[] = [
     id: 'iss-203',
     visit_id: 'vis-105',
     category: 'fasilitas',
-    description: 'Aliran air kamar mandi kecil pada pagi hari di Ruang Usman Kamar 2.',
+    description: 'Aliran air kamar mandi Ruang Usman Kamar 2 sempat kecil di pagi hari.',
     priority: 'sedang',
     status: 'selesai',
-    assigned_unit: 'IPSRS',
-    assigned_to: 'Bpk. Mulyadi (Plumbing IPSRS)',
-    initial_action: 'Pembersihan pipa filter kran dan pengalihan pompa pendorong.',
+    assigned_unit: 'IPSRS (Sanitasi & Perpipaan)',
+    assigned_to: 'Teknisi Pompa',
+    initial_action: 'Pembersihan kran dan pengecekan pompa pendorong.',
     due_at: '2026-10-17T17:00:00Z',
     resolved_at: '2026-10-17T15:45:00Z',
-    resolution_notes: 'Pompa pendorong booster telah dinyalakan kembali, debit air sudah deras dan normal.',
+    resolution_notes: 'Pompa pendorong telah dinormalkan dan debit air kamar mandi sudah deras kembali.',
     verified_by: 'usr-super-01',
     verified_by_name: 'Ns. Siti Nurhaliza, S.Kep',
     verified_at: '2026-10-17T16:00:00Z',
@@ -542,7 +540,7 @@ const INITIAL_ISSUES: Issue[] = [
     updated_at: '2026-10-17T10:00:00Z',
     patient_name: 'Bpk. Sukarna',
     visit_number: 'VIS-202610-0006',
-    ward_name: 'Rawat Jalan (Poliklinik)',
+    ward_name: 'Rawat Jalan',
     room_number: '9',
     visitor_name: 'Budi Santoso, Amd.Kep',
     follow_up_logs: [],
@@ -582,16 +580,16 @@ const INITIAL_AUDIT_LOGS: AuditLog[] = [
   },
 ];
 
-// Persistent state management keys
-const STORAGE_VISITS = 'sapa_visits_v4';
-const STORAGE_ISSUES = 'sapa_issues_v4';
-const STORAGE_AUDIT = 'sapa_audit_v4';
-const STORAGE_CURRENT_USER = 'sapa_current_user_v1';
-const STORAGE_WARDS = 'sapa_wards_v4';
-const STORAGE_USERS = 'sapa_users_v4';
-const STORAGE_HOSPITAL_PROFILE = 'sapa_hospital_profile_v1';
-const STORAGE_SLA_SETTINGS = 'sapa_sla_settings_v1';
-const STORAGE_ISSUE_CATEGORIES = 'sapa_issue_categories_v1';
+// Persistent state keys
+const STORAGE_VISITS = 'sapa_visits_v5';
+const STORAGE_ISSUES = 'sapa_issues_v5';
+const STORAGE_AUDIT = 'sapa_audit_v5';
+const STORAGE_CURRENT_USER = 'sapa_current_user_v5';
+const STORAGE_WARDS = 'sapa_wards_v5';
+const STORAGE_USERS = 'sapa_users_v5';
+const STORAGE_HOSPITAL_PROFILE = 'sapa_hospital_profile_v5';
+const STORAGE_SLA_SETTINGS = 'sapa_sla_settings_v5';
+const STORAGE_ISSUE_CATEGORIES = 'sapa_issue_categories_v5';
 
 export class DataStore {
   private static visits: Visit[] = [];
@@ -604,11 +602,13 @@ export class DataStore {
   private static slaSettings: SlaSetting[] = [];
   private static issueCategories: IssueCategorySetting[] = [];
   private static listeners: Array<() => void> = [];
+  private static isSyncing = false;
+  private static realtimeSubscribed = false;
 
   static init() {
     if (typeof window === 'undefined') return;
 
-    // Load or initialize visits
+    // 1. Load visits
     const storedVisits = localStorage.getItem(STORAGE_VISITS);
     if (storedVisits) {
       try {
@@ -621,7 +621,7 @@ export class DataStore {
       this.saveVisits();
     }
 
-    // Load or initialize issues
+    // 2. Load issues
     const storedIssues = localStorage.getItem(STORAGE_ISSUES);
     if (storedIssues) {
       try {
@@ -634,7 +634,7 @@ export class DataStore {
       this.saveIssues();
     }
 
-    // Load or initialize audit logs
+    // 3. Load audit logs
     const storedAudit = localStorage.getItem(STORAGE_AUDIT);
     if (storedAudit) {
       try {
@@ -647,7 +647,7 @@ export class DataStore {
       this.saveAudit();
     }
 
-    // Load active user
+    // 4. Load active user
     const storedUser = localStorage.getItem(STORAGE_CURRENT_USER);
     if (storedUser) {
       try {
@@ -657,7 +657,7 @@ export class DataStore {
       }
     }
 
-    // Load wards
+    // 5. Load wards
     const storedWards = localStorage.getItem(STORAGE_WARDS);
     if (storedWards) {
       try {
@@ -670,7 +670,7 @@ export class DataStore {
       this.saveWards();
     }
 
-    // Load users
+    // 6. Load users
     const storedUsers = localStorage.getItem(STORAGE_USERS);
     if (storedUsers) {
       try {
@@ -683,7 +683,7 @@ export class DataStore {
       this.saveUsers();
     }
 
-    // Load hospital profile
+    // 7. Load hospital profile
     const storedProfile = localStorage.getItem(STORAGE_HOSPITAL_PROFILE);
     if (storedProfile) {
       try {
@@ -696,7 +696,7 @@ export class DataStore {
       this.saveHospitalProfile();
     }
 
-    // Load SLA settings
+    // 8. Load SLA settings
     const storedSla = localStorage.getItem(STORAGE_SLA_SETTINGS);
     if (storedSla) {
       try {
@@ -709,7 +709,7 @@ export class DataStore {
       this.saveSlaSettings();
     }
 
-    // Load issue categories
+    // 9. Load issue categories
     const storedCategories = localStorage.getItem(STORAGE_ISSUE_CATEGORIES);
     if (storedCategories) {
       try {
@@ -722,8 +722,11 @@ export class DataStore {
       this.saveIssueCategories();
     }
 
-    // Attempt cloud sync if Supabase is connected
-    this.syncFromSupabase();
+    // Attempt cloud sync and setup realtime if connected
+    if (isSupabaseConfigured()) {
+      this.syncFromSupabase();
+      this.setupRealtimeSubscription();
+    }
   }
 
   private static saveVisits() {
@@ -796,7 +799,7 @@ export class DataStore {
     return { ...this.hospitalProfile };
   }
 
-  static updateHospitalProfile(updates: Partial<HospitalProfile>) {
+  static async updateHospitalProfile(updates: Partial<HospitalProfile>) {
     this.hospitalProfile = {
       ...this.hospitalProfile,
       ...updates,
@@ -808,8 +811,23 @@ export class DataStore {
       actor_name: this.currentUser.full_name,
       action: 'UPDATE_HOSPITAL_PROFILE',
       table_name: 'hospital_profile',
-      metadata: { fields: Object.keys(updates) },
+      metadata: { fields: Object.keys(updates), name: this.hospitalProfile.name },
     });
+
+    // Cloud sync to Supabase app_settings
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'hospital_profile',
+          value: this.hospitalProfile,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase profile sync error:', err);
+      }
+    }
+
     this.notify();
   }
 
@@ -842,10 +860,10 @@ export class DataStore {
     return this.users.find((u) => u.id === id);
   }
 
-  static createUser(user: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): UserProfile {
+  static async createUser(user: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<UserProfile> {
     const newUser: UserProfile = {
       ...user,
-      id: `usr-${Date.now()}`,
+      id: `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -859,11 +877,32 @@ export class DataStore {
       record_id: newUser.id,
       metadata: { name: newUser.full_name, role: newUser.role, email: newUser.email },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').upsert({
+          id: newUser.id,
+          full_name: newUser.full_name,
+          role: newUser.role,
+          department: newUser.department,
+          phone: newUser.phone,
+          email: newUser.email,
+          avatar_url: newUser.avatar_url,
+          is_active: newUser.is_active,
+          created_at: newUser.created_at,
+          updated_at: newUser.updated_at,
+        });
+      } catch (err) {
+        console.warn('Supabase user insert error:', err);
+      }
+    }
+
     this.notify();
     return newUser;
   }
 
-  static updateUser(id: string, updates: Partial<UserProfile>): boolean {
+  static async updateUser(id: string, updates: Partial<UserProfile>): Promise<boolean> {
     const index = this.users.findIndex((u) => u.id === id);
     if (index === -1) return false;
 
@@ -873,7 +912,6 @@ export class DataStore {
       updated_at: new Date().toISOString(),
     };
 
-    // If active user updated, sync currentUser
     if (this.currentUser.id === id) {
       this.currentUser = { ...this.users[index] };
       if (typeof window !== 'undefined') {
@@ -890,13 +928,29 @@ export class DataStore {
       record_id: id,
       metadata: { updates },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Supabase user update error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  static deleteUser(id: string): boolean {
+  static async deleteUser(id: string): Promise<boolean> {
     if (this.currentUser.id === id) {
-      return false; // Cannot delete currently logged in user
+      return false;
     }
     const user = this.users.find((u) => u.id === id);
     if (!user) return false;
@@ -911,11 +965,21 @@ export class DataStore {
       record_id: id,
       metadata: { name: user.full_name, role: user.role },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('profiles').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase user delete error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  // --- Wards ---
+  // --- Master Ruangan (Wards) ---
   static getWards(): Ward[] {
     return [...this.wards];
   }
@@ -924,10 +988,10 @@ export class DataStore {
     return this.wards.find((w) => w.id === id);
   }
 
-  static createWard(ward: Omit<Ward, 'id' | 'created_at' | 'updated_at'>): Ward {
+  static async createWard(ward: Omit<Ward, 'id' | 'created_at' | 'updated_at'>): Promise<Ward> {
     const newWard: Ward = {
       ...ward,
-      id: `ward-${Date.now()}`,
+      id: `ward-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -941,11 +1005,30 @@ export class DataStore {
       record_id: newWard.id,
       metadata: { name: newWard.name, code: newWard.code, capacity: newWard.capacity },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('wards').upsert({
+          id: newWard.id,
+          name: newWard.name,
+          code: newWard.code,
+          floor: newWard.floor,
+          capacity: newWard.capacity,
+          is_active: newWard.is_active,
+          created_at: newWard.created_at,
+          updated_at: newWard.updated_at,
+        });
+      } catch (err) {
+        console.warn('Supabase ward insert error:', err);
+      }
+    }
+
     this.notify();
     return newWard;
   }
 
-  static updateWard(id: string, updates: Partial<Ward>): boolean {
+  static async updateWard(id: string, updates: Partial<Ward>): Promise<boolean> {
     const index = this.wards.findIndex((w) => w.id === id);
     if (index === -1) return false;
 
@@ -963,11 +1046,27 @@ export class DataStore {
       record_id: id,
       metadata: { updates },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase
+          .from('wards')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+      } catch (err) {
+        console.warn('Supabase ward update error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  static deleteWard(id: string): boolean {
+  static async deleteWard(id: string): Promise<boolean> {
     const ward = this.wards.find((w) => w.id === id);
     if (!ward) return false;
 
@@ -981,6 +1080,16 @@ export class DataStore {
       record_id: id,
       metadata: { name: ward.name, code: ward.code },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('wards').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase ward delete error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
@@ -990,7 +1099,7 @@ export class DataStore {
     return [...this.slaSettings];
   }
 
-  static updateSlaSetting(priority: IssuePriority, updates: Partial<SlaSetting>): boolean {
+  static async updateSlaSetting(priority: IssuePriority, updates: Partial<SlaSetting>): Promise<boolean> {
     const index = this.slaSettings.findIndex((s) => s.priority === priority);
     if (index === -1) return false;
 
@@ -1006,6 +1115,20 @@ export class DataStore {
       table_name: 'sla_settings',
       metadata: { priority, updates },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'sla_settings',
+          value: this.slaSettings,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase sla sync error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
@@ -1014,7 +1137,7 @@ export class DataStore {
     return [...this.issueCategories];
   }
 
-  static createIssueCategory(category: Omit<IssueCategorySetting, 'id'>): IssueCategorySetting {
+  static async createIssueCategory(category: Omit<IssueCategorySetting, 'id'>): Promise<IssueCategorySetting> {
     const newCat: IssueCategorySetting = {
       ...category,
       id: `cat-${Date.now()}`,
@@ -1029,11 +1152,25 @@ export class DataStore {
       record_id: newCat.id,
       metadata: { name: newCat.name, key: newCat.key },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'issue_categories',
+          value: this.issueCategories,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase categories sync error:', err);
+      }
+    }
+
     this.notify();
     return newCat;
   }
 
-  static updateIssueCategory(id: string, updates: Partial<IssueCategorySetting>): boolean {
+  static async updateIssueCategory(id: string, updates: Partial<IssueCategorySetting>): Promise<boolean> {
     const index = this.issueCategories.findIndex((c) => c.id === id);
     if (index === -1) return false;
 
@@ -1050,11 +1187,25 @@ export class DataStore {
       record_id: id,
       metadata: { updates },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'issue_categories',
+          value: this.issueCategories,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase categories sync error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  static deleteIssueCategory(id: string): boolean {
+  static async deleteIssueCategory(id: string): Promise<boolean> {
     const cat = this.issueCategories.find((c) => c.id === id);
     if (!cat) return false;
 
@@ -1068,11 +1219,25 @@ export class DataStore {
       record_id: id,
       metadata: { name: cat.name },
     });
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase.from('app_settings').upsert({
+          key: 'issue_categories',
+          value: this.issueCategories,
+          updated_at: new Date().toISOString(),
+        });
+      } catch (err) {
+        console.warn('Supabase categories sync error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  // Visits
+  // --- Visits & Issues ---
   static getVisits(): Visit[] {
     return [...this.visits].sort(
       (a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime()
@@ -1086,7 +1251,6 @@ export class DataStore {
     return { ...visit, issues: relatedIssues };
   }
 
-  // Issues
   static getIssues(): Issue[] {
     return [...this.issues].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -1097,7 +1261,6 @@ export class DataStore {
     return this.issues.find((i) => i.id === id);
   }
 
-  // Audit Logs
   static getAuditLogs(): AuditLog[] {
     return [...this.auditLogs].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -1115,9 +1278,26 @@ export class DataStore {
       this.auditLogs = this.auditLogs.slice(0, 200);
     }
     this.saveAudit();
+
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      Promise.resolve(
+        supabase.from('audit_logs').insert([
+          {
+            id: newLog.id,
+            actor_id: newLog.actor_id,
+            actor_name: newLog.actor_name,
+            action: newLog.action,
+            table_name: newLog.table_name,
+            record_id: newLog.record_id || null,
+            metadata: newLog.metadata || {},
+            created_at: newLog.created_at,
+          },
+        ])
+      ).catch(() => {});
+    }
   }
 
-  // Generate Unique Visit Number
   static generateVisitNumber(): string {
     const now = new Date();
     const year = now.getFullYear();
@@ -1127,12 +1307,10 @@ export class DataStore {
     return `VIS-${year}${month}-${seq}`;
   }
 
-  // Create Visit with optional Issue
   static async createVisit(
     visitData: Omit<Visit, 'id' | 'created_at' | 'updated_at' | 'visit_number'>,
     issueData?: Omit<Issue, 'id' | 'visit_id' | 'created_at' | 'updated_at'>
   ): Promise<Visit> {
-    const supabase = getSupabaseClient();
     const now = new Date().toISOString();
     const visitId = `vis-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const visitNumber = this.generateVisitNumber();
@@ -1142,7 +1320,7 @@ export class DataStore {
       ...visitData,
       id: visitId,
       visit_number: visitNumber,
-      ward_name: ward?.name || 'Ruang Perawatan',
+      ward_name: ward?.name || visitData.ward_name || 'Ruang Perawatan',
       created_at: now,
       updated_at: now,
     };
@@ -1167,7 +1345,7 @@ export class DataStore {
             id: `log-${Date.now()}`,
             issue_id: issueId,
             action_description:
-              issueData.initial_action || 'Keluhan dicatat saat kunjungan pasien.',
+              issueData.initial_action || 'Keluhan dicatat saat kunjungan sapa pasien.',
             status_after_action: issueData.status || 'belum_ditindaklanjuti',
             actor_id: this.currentUser.id,
             actor_name: this.currentUser.full_name,
@@ -1197,17 +1375,21 @@ export class DataStore {
       },
     });
 
-    // If Supabase is connected, sync asynchronously
+    // Cloud sync to Supabase
+    const supabase = getSupabaseClient();
     if (supabase) {
       try {
         await supabase.from('visits').insert([
           {
+            id: newVisit.id,
             visit_number: newVisit.visit_number,
             patient_name: newVisit.patient_name,
             ward_id: newVisit.ward_id,
+            ward_name: newVisit.ward_name,
             room_number: newVisit.room_number,
             visited_at: newVisit.visited_at,
             visitor_id: this.currentUser.id,
+            visitor_name: newVisit.visitor_name,
             companion_name: newVisit.companion_name,
             companion_relation: newVisit.companion_relation,
             social_observation: newVisit.social_observation,
@@ -1223,12 +1405,21 @@ export class DataStore {
             overall_satisfaction_score: newVisit.overall_satisfaction_score,
             has_issue: newVisit.has_issue,
             general_notes: newVisit.general_notes,
+            created_at: newVisit.created_at,
+            updated_at: newVisit.updated_at,
           },
         ]);
 
         if (newIssue) {
           await supabase.from('issues').insert([
             {
+              id: newIssue.id,
+              visit_id: newIssue.visit_id,
+              patient_name: newIssue.patient_name,
+              visit_number: newIssue.visit_number,
+              ward_name: newIssue.ward_name,
+              room_number: newIssue.room_number,
+              visitor_name: newIssue.visitor_name,
               category: newIssue.category,
               description: newIssue.description,
               priority: newIssue.priority,
@@ -1237,11 +1428,14 @@ export class DataStore {
               assigned_to: newIssue.assigned_to,
               initial_action: newIssue.initial_action,
               due_at: newIssue.due_at,
+              follow_up_logs: newIssue.follow_up_logs,
+              created_at: newIssue.created_at,
+              updated_at: newIssue.updated_at,
             },
           ]);
         }
       } catch (err) {
-        console.warn('Could not sync visit to Supabase table:', err);
+        console.warn('Supabase visit push error:', err);
       }
     }
 
@@ -1249,7 +1443,6 @@ export class DataStore {
     return newVisit;
   }
 
-  // Update Follow Up on an Issue
   static async addFollowUp(
     issueId: string,
     actionDescription: string,
@@ -1298,7 +1491,6 @@ export class DataStore {
       },
     });
 
-    // Supabase sync if active
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
@@ -1308,11 +1500,12 @@ export class DataStore {
             status: newStatus,
             resolution_notes: updatedIssue.resolution_notes,
             resolved_at: updatedIssue.resolved_at,
+            follow_up_logs: updatedIssue.follow_up_logs,
             updated_at: now,
           })
           .eq('id', issueId);
       } catch (err) {
-        console.warn('Supabase issue update error:', err);
+        console.warn('Supabase follow-up sync error:', err);
       }
     }
 
@@ -1320,7 +1513,6 @@ export class DataStore {
     return true;
   }
 
-  // Verify Issue Resolution (Supervisor / Admin only)
   static async verifyIssue(issueId: string, verificationNotes: string): Promise<boolean> {
     const issueIndex = this.issues.findIndex((i) => i.id === issueId);
     if (issueIndex === -1) return false;
@@ -1356,23 +1548,38 @@ export class DataStore {
       },
     });
 
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        await supabase
+          .from('issues')
+          .update({
+            status: 'selesai',
+            verified_by: updatedIssue.verified_by,
+            verified_by_name: updatedIssue.verified_by_name,
+            verified_at: updatedIssue.verified_at,
+            resolution_notes: updatedIssue.resolution_notes,
+            updated_at: now,
+          })
+          .eq('id', issueId);
+      } catch (err) {
+        console.warn('Supabase issue verify error:', err);
+      }
+    }
+
     this.notify();
     return true;
   }
 
-  // Delete Visit (with cascading issues and audit logging)
   static async deleteVisit(visitId: string): Promise<boolean> {
     const visitIndex = this.visits.findIndex((v) => v.id === visitId);
     if (visitIndex === -1) return false;
 
     const visit = this.visits[visitIndex];
-    const supabase = getSupabaseClient();
 
-    // Remove associated issues
     this.issues = this.issues.filter((i) => i.visit_id !== visitId);
     this.saveIssues();
 
-    // Remove visit from repository
     this.visits.splice(visitIndex, 1);
     this.saveVisits();
 
@@ -1390,8 +1597,10 @@ export class DataStore {
       },
     });
 
+    const supabase = getSupabaseClient();
     if (supabase) {
       try {
+        await supabase.from('issues').delete().eq('visit_id', visitId);
         await supabase.from('visits').delete().eq('id', visitId);
       } catch (err) {
         console.warn('Supabase visit delete error:', err);
@@ -1402,41 +1611,303 @@ export class DataStore {
     return true;
   }
 
-  // Cloud Sync with Supabase (if connected)
-  static async syncFromSupabase() {
+  // --- Realtime Subscriptions & Cloud Sync ---
+  private static setupRealtimeSubscription() {
+    if (this.realtimeSubscribed || typeof window === 'undefined') return;
     const supabase = getSupabaseClient();
     if (!supabase) return;
 
     try {
-      // 1. Fetch remote wards
-      const { data: remoteWards, error: wardError } = await supabase
+      this.realtimeSubscribed = true;
+      const channel = supabase
+        .channel('sapa_live_sync')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public' },
+          (payload) => {
+            // Background pull on remote change
+            console.log('Realtime sync payload received from cloud:', payload.table);
+            this.syncFromSupabase(true);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+        this.realtimeSubscribed = false;
+      };
+    } catch (err) {
+      console.warn('Realtime subscription notice:', err);
+    }
+  }
+
+  // Pull all remote state from Supabase
+  static async syncFromSupabase(isBackground = false): Promise<{ success: boolean; message: string }> {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { success: false, message: 'Supabase belum dikonfigurasi.' };
+    }
+
+    if (this.isSyncing) {
+      return { success: true, message: 'Sinkronisasi sedang berlangsung...' };
+    }
+
+    this.isSyncing = true;
+    try {
+      // 1. Fetch app_settings (Hospital Profile, SLA, Categories)
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('app_settings')
+        .select('*');
+
+      if (!settingsError && settingsData && settingsData.length > 0) {
+        for (const item of settingsData) {
+          if (item.key === 'hospital_profile' && item.value) {
+            this.hospitalProfile = { ...INITIAL_HOSPITAL_PROFILE, ...item.value };
+            this.saveHospitalProfile();
+          } else if (item.key === 'sla_settings' && Array.isArray(item.value)) {
+            this.slaSettings = item.value;
+            this.saveSlaSettings();
+          } else if (item.key === 'issue_categories' && Array.isArray(item.value)) {
+            this.issueCategories = item.value;
+            this.saveIssueCategories();
+          }
+        }
+      }
+
+      // 2. Fetch wards
+      const { data: wardsData, error: wardsError } = await supabase
         .from('wards')
         .select('*')
         .order('floor', { ascending: true });
 
-      if (!wardError && remoteWards && remoteWards.length > 0) {
-        this.wards = remoteWards;
+      if (!wardsError && wardsData && wardsData.length > 0) {
+        this.wards = wardsData;
         this.saveWards();
       }
 
-      // 2. Fetch remote profiles
-      const { data: remoteProfiles, error: profError } = await supabase
+      // 3. Fetch profiles (users)
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (!profError && remoteProfiles && remoteProfiles.length > 0) {
-        this.users = remoteProfiles;
+      if (!profilesError && profilesData && profilesData.length > 0) {
+        this.users = profilesData;
         this.saveUsers();
+        // Update currentUser if in list
+        const activeInList = this.users.find((u) => u.id === this.currentUser.id);
+        if (activeInList) {
+          this.currentUser = activeInList;
+        }
       }
 
+      // 4. Fetch visits
+      const { data: visitsData, error: visitsError } = await supabase
+        .from('visits')
+        .select('*')
+        .order('visited_at', { ascending: false });
+
+      if (!visitsError && visitsData && visitsData.length > 0) {
+        this.visits = visitsData;
+        this.saveVisits();
+      }
+
+      // 5. Fetch issues
+      const { data: issuesData, error: issuesError } = await supabase
+        .from('issues')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!issuesError && issuesData && issuesData.length > 0) {
+        this.issues = issuesData;
+        this.saveIssues();
+      }
+
+      // 6. Fetch audit logs
+      const { data: auditData, error: auditError } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (!auditError && auditData && auditData.length > 0) {
+        this.auditLogs = auditData;
+        this.saveAudit();
+      }
+
+      // If remote database is completely empty (fresh project), auto-seed from local data!
+      const isRemoteEmpty =
+        (!wardsData || wardsData.length === 0) &&
+        (!profilesData || profilesData.length === 0) &&
+        (!settingsData || settingsData.length === 0);
+
+      if (isRemoteEmpty && !isBackground) {
+        console.log('Database Supabase kosong, melakukan auto-seeding data awal dari sistem...');
+        await this.pushAllToSupabase();
+      }
+
+      this.isSyncing = false;
       this.notify();
-    } catch (err) {
-      console.warn('Supabase cloud auto-sync notice:', err);
+      return {
+        success: true,
+        message: 'Data berhasil disinkronkan dengan database cloud Supabase.',
+      };
+    } catch (err: unknown) {
+      this.isSyncing = false;
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: `Gagal sinkronisasi data cloud: ${msg}` };
     }
   }
 
-  // Export entire application state (for instant migration between AI Studio & Vercel)
+  // Push all local state to Supabase
+  static async pushAllToSupabase(): Promise<{ success: boolean; message: string }> {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { success: false, message: 'Kredensial Supabase belum terhubung.' };
+    }
+
+    try {
+      // 1. Push app_settings
+      await supabase.from('app_settings').upsert([
+        {
+          key: 'hospital_profile',
+          value: this.hospitalProfile,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          key: 'sla_settings',
+          value: this.slaSettings,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          key: 'issue_categories',
+          value: this.issueCategories,
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+      // 2. Push wards
+      if (this.wards.length > 0) {
+        await supabase.from('wards').upsert(
+          this.wards.map((w) => ({
+            id: w.id,
+            name: w.name,
+            code: w.code,
+            floor: w.floor,
+            capacity: w.capacity,
+            is_active: w.is_active,
+            created_at: w.created_at,
+            updated_at: w.updated_at,
+          }))
+        );
+      }
+
+      // 3. Push profiles
+      if (this.users.length > 0) {
+        await supabase.from('profiles').upsert(
+          this.users.map((u) => ({
+            id: u.id,
+            full_name: u.full_name,
+            role: u.role,
+            department: u.department,
+            phone: u.phone,
+            email: u.email,
+            avatar_url: u.avatar_url,
+            is_active: u.is_active,
+            created_at: u.created_at,
+            updated_at: u.updated_at,
+          }))
+        );
+      }
+
+      // 4. Push visits
+      if (this.visits.length > 0) {
+        await supabase.from('visits').upsert(
+          this.visits.map((v) => ({
+            id: v.id,
+            visit_number: v.visit_number,
+            patient_name: v.patient_name,
+            ward_id: v.ward_id,
+            ward_name: v.ward_name,
+            room_number: v.room_number,
+            visited_at: v.visited_at,
+            visitor_id: v.visitor_id,
+            visitor_name: v.visitor_name,
+            companion_name: v.companion_name,
+            companion_relation: v.companion_relation,
+            social_observation: v.social_observation,
+            social_notes: v.social_notes,
+            psychological_observation: v.psychological_observation,
+            psychological_notes: v.psychological_notes,
+            spiritual_observation: v.spiritual_observation,
+            spiritual_notes: v.spiritual_notes,
+            comfort_score: v.comfort_score,
+            cleanliness_score: v.cleanliness_score,
+            communication_score: v.communication_score,
+            responsiveness_score: v.responsiveness_score,
+            overall_satisfaction_score: v.overall_satisfaction_score,
+            has_issue: v.has_issue,
+            general_notes: v.general_notes,
+            created_at: v.created_at,
+            updated_at: v.updated_at,
+          }))
+        );
+      }
+
+      // 5. Push issues
+      if (this.issues.length > 0) {
+        await supabase.from('issues').upsert(
+          this.issues.map((i) => ({
+            id: i.id,
+            visit_id: i.visit_id,
+            patient_name: i.patient_name,
+            visit_number: i.visit_number,
+            ward_name: i.ward_name,
+            room_number: i.room_number,
+            visitor_name: i.visitor_name,
+            category: i.category,
+            description: i.description,
+            priority: i.priority,
+            status: i.status,
+            assigned_unit: i.assigned_unit,
+            assigned_to: i.assigned_to,
+            initial_action: i.initial_action,
+            due_at: i.due_at,
+            resolved_at: i.resolved_at,
+            resolution_notes: i.resolution_notes,
+            verified_by: i.verified_by,
+            verified_by_name: i.verified_by_name,
+            verified_at: i.verified_at,
+            follow_up_logs: i.follow_up_logs,
+            created_at: i.created_at,
+            updated_at: i.updated_at,
+          }))
+        );
+      }
+
+      this.addAuditLog({
+        actor_id: this.currentUser.id,
+        actor_name: this.currentUser.full_name,
+        action: 'PUSH_ALL_TO_CLOUD',
+        table_name: 'all',
+        metadata: {
+          wards_count: this.wards.length,
+          visits_count: this.visits.length,
+          issues_count: this.issues.length,
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Seluruh profil RS, data pengguna, master ruangan, dan kunjungan berhasil diunggah ke Supabase!',
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: `Gagal mengunggah data ke Supabase: ${msg}` };
+    }
+  }
+
+  // Export full JSON state
   static exportAllData(): string {
     const payload = {
       app: 'SAPA_PASIEN_RSUD_AL_MULK',
@@ -1454,12 +1925,12 @@ export class DataStore {
     return JSON.stringify(payload, null, 2);
   }
 
-  // Import entire application state
-  static importAllData(jsonString: string): { success: boolean; message: string } {
+  // Import full JSON state
+  static async importAllData(jsonString: string): Promise<{ success: boolean; message: string }> {
     try {
       const data = JSON.parse(jsonString);
       if (!data || typeof data !== 'object') {
-        return { success: false, message: 'Format data JSON tidak valid.' };
+        return { success: false, message: 'Format berkas JSON tidak valid.' };
       }
 
       if (data.hospitalProfile) {
@@ -1503,10 +1974,15 @@ export class DataStore {
         metadata: { imported_at: new Date().toISOString() },
       });
 
+      // If Supabase is connected, push imported state to cloud
+      if (isSupabaseConfigured()) {
+        await this.pushAllToSupabase();
+      }
+
       this.notify();
       return {
         success: true,
-        message: 'Seluruh konfigurasi profil, pengguna, master ruangan, SLA, dan kunjungan berhasil dipulihkan!',
+        message: 'Seluruh konfigurasi profil, pengguna, ruangan, dan data kunjungan berhasil dipulihkan!',
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1514,7 +1990,7 @@ export class DataStore {
     }
   }
 
-  // Reset to initial demo data (for testing)
+  // Reset to initial demo data
   static resetToDefaults() {
     this.visits = [...INITIAL_VISITS];
     this.issues = [...INITIAL_ISSUES];

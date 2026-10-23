@@ -33,6 +33,9 @@ import {
   Globe,
   HelpCircle,
   Send,
+  DownloadCloud,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import {
   Ward,
@@ -50,6 +53,7 @@ import {
   saveSupabaseCredentials,
   testSupabaseConnection,
   resetSupabaseClient,
+  isSupabaseConfigured,
 } from '../../lib/supabase';
 
 interface SettingsModuleProps {
@@ -102,13 +106,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsEditingProfile(false);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileForm.name.trim()) {
       showToast('Nama rumah sakit wajib diisi.', 'error');
       return;
     }
-    DataStore.updateHospitalProfile(profileForm);
+    await DataStore.updateHospitalProfile(profileForm);
     setIsEditingProfile(false);
     showToast('Profil dan foto RSUD Al-Mulk berhasil diperbarui.');
   };
@@ -152,13 +156,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     department: currentUser.department || '',
   });
 
-  const handleSaveMyAccount = (e: React.FormEvent) => {
+  const handleSaveMyAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!myAccountForm.full_name.trim()) {
       showToast('Nama lengkap wajib diisi.', 'error');
       return;
     }
-    DataStore.updateUser(currentUser.id, myAccountForm);
+    await DataStore.updateUser(currentUser.id, myAccountForm);
     setIsEditingMyAccount(false);
     showToast('Profil akun Anda berhasil diperbarui.');
   };
@@ -203,7 +207,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsUserModalOpen(true);
   };
 
-  const handleSaveUser = (e: React.FormEvent) => {
+  const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userFormData.full_name.trim()) {
       showToast('Nama petugas wajib diisi.', 'error');
@@ -215,35 +219,35 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     }
 
     if (editingUser) {
-      DataStore.updateUser(editingUser.id, userFormData);
+      await DataStore.updateUser(editingUser.id, userFormData);
       showToast(`Data pengguna "${userFormData.full_name}" berhasil diperbarui.`);
     } else {
-      DataStore.createUser(userFormData);
+      await DataStore.createUser(userFormData);
       showToast(`Pengguna baru "${userFormData.full_name}" berhasil ditambahkan.`);
     }
     setIsUserModalOpen(false);
   };
 
-  const handleToggleUserStatus = (user: UserProfile) => {
+  const handleToggleUserStatus = async (user: UserProfile) => {
     if (user.id === currentUser.id) {
       showToast('Anda tidak dapat menonaktifkan akun yang sedang login.', 'error');
       return;
     }
     const newStatus = !user.is_active;
-    DataStore.updateUser(user.id, { is_active: newStatus });
+    await DataStore.updateUser(user.id, { is_active: newStatus });
     showToast(
       `Status akun "${user.full_name}" diubah menjadi ${newStatus ? 'Aktif' : 'Nonaktif'}.`
     );
   };
 
-  const handleConfirmDeleteUser = () => {
+  const handleConfirmDeleteUser = async () => {
     if (!userToDelete) return;
     if (userToDelete.id === currentUser.id) {
       showToast('Tidak dapat menghapus akun yang sedang aktif digunakan.', 'error');
       setUserToDelete(null);
       return;
     }
-    DataStore.deleteUser(userToDelete.id);
+    await DataStore.deleteUser(userToDelete.id);
     showToast(`Pengguna "${userToDelete.full_name}" berhasil dihapus.`);
     setUserToDelete(null);
   };
@@ -285,7 +289,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsWardModalOpen(true);
   };
 
-  const handleSaveWard = (e: React.FormEvent) => {
+  const handleSaveWard = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wardFormData.name.trim()) {
       showToast('Nama ruangan rawat inap wajib diisi.', 'error');
@@ -297,13 +301,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     }
 
     if (editingWard) {
-      DataStore.updateWard(editingWard.id, {
+      await DataStore.updateWard(editingWard.id, {
         ...wardFormData,
         code: wardFormData.code.toUpperCase().trim(),
       });
       showToast(`Ruangan "${wardFormData.name}" berhasil diperbarui.`);
     } else {
-      DataStore.createWard({
+      await DataStore.createWard({
         ...wardFormData,
         code: wardFormData.code.toUpperCase().trim(),
       });
@@ -312,17 +316,17 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsWardModalOpen(false);
   };
 
-  const handleToggleWardStatus = (ward: Ward) => {
+  const handleToggleWardStatus = async (ward: Ward) => {
     const newStatus = !ward.is_active;
-    DataStore.updateWard(ward.id, { is_active: newStatus });
+    await DataStore.updateWard(ward.id, { is_active: newStatus });
     showToast(
       `Status ruangan "${ward.name}" diubah menjadi ${newStatus ? 'Aktif' : 'Nonaktif'}.`
     );
   };
 
-  const handleConfirmDeleteWard = () => {
+  const handleConfirmDeleteWard = async () => {
     if (!wardToDelete) return;
-    DataStore.deleteWard(wardToDelete.id);
+    await DataStore.deleteWard(wardToDelete.id);
     showToast(`Ruangan "${wardToDelete.name}" berhasil dihapus dari master data.`);
     setWardToDelete(null);
   };
@@ -346,14 +350,14 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     });
   };
 
-  const handleSaveSla = (e: React.FormEvent) => {
+  const handleSaveSla = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSla) return;
     if (slaFormData.max_hours <= 0) {
       showToast('Target waktu respons harus lebih dari 0 jam.', 'error');
       return;
     }
-    DataStore.updateSlaSetting(editingSla.priority, slaFormData);
+    await DataStore.updateSlaSetting(editingSla.priority, slaFormData);
     showToast(`Standar SLA untuk "${editingSla.label}" berhasil diperbarui.`);
     setEditingSla(null);
   };
@@ -392,7 +396,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsCategoryModalOpen(true);
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryFormData.name.trim()) {
       showToast('Nama kategori masalah wajib diisi.', 'error');
@@ -403,13 +407,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
       categoryFormData.name.trim().toLowerCase().replace(/\s+/g, '_');
 
     if (editingCategory) {
-      DataStore.updateIssueCategory(editingCategory.id, {
+      await DataStore.updateIssueCategory(editingCategory.id, {
         ...categoryFormData,
         key: cleanKey,
       });
       showToast(`Kategori masalah "${categoryFormData.name}" berhasil diperbarui.`);
     } else {
-      DataStore.createIssueCategory({
+      await DataStore.createIssueCategory({
         ...categoryFormData,
         key: cleanKey,
       });
@@ -418,9 +422,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     setIsCategoryModalOpen(false);
   };
 
-  const handleConfirmDeleteCategory = () => {
+  const handleConfirmDeleteCategory = async () => {
     if (!categoryToDelete) return;
-    DataStore.deleteIssueCategory(categoryToDelete.id);
+    await DataStore.deleteIssueCategory(categoryToDelete.id);
     showToast(`Kategori "${categoryToDelete.name}" berhasil dihapus.`);
     setCategoryToDelete(null);
   };
@@ -431,7 +435,12 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
   const creds = getSupabaseCredentials();
   const [supabaseUrl, setSupabaseUrl] = useState(creds.url);
   const [supabaseKey, setSupabaseKey] = useState(creds.anonKey);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    message: string;
+    tablesReady?: boolean;
+    sanitizedUrl?: string;
+  } | null>(null);
   const [isTesting, setIsTesting] = useState(false);
   const [copiedMigration, setCopiedMigration] = useState(false);
   const [copiedCodeSnippet, setCopiedCodeSnippet] = useState(false);
@@ -455,14 +464,31 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     }
   };
 
+  const [isPushingCloud, setIsPushingCloud] = useState(false);
+  const [isPullingCloud, setIsPullingCloud] = useState(false);
+
+  const handlePushAllToCloud = async () => {
+    setIsPushingCloud(true);
+    const res = await DataStore.pushAllToSupabase();
+    setIsPushingCloud(false);
+    showToast(res.message, res.success ? 'success' : 'error');
+  };
+
+  const handlePullAllFromCloud = async () => {
+    setIsPullingCloud(true);
+    const res = await DataStore.syncFromSupabase();
+    setIsPullingCloud(false);
+    showToast(res.message, res.success ? 'success' : 'error');
+  };
+
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
-      const res = DataStore.importAllData(content);
+      const res = await DataStore.importAllData(content);
       if (res.success) {
         showToast(res.message, 'success');
       } else {
@@ -496,29 +522,46 @@ export const DEMO_ACCOUNTS: UserProfile[] = ${JSON.stringify(users, null, 2)};
     setTestResult(res);
     setIsTesting(false);
 
+    if (res.sanitizedUrl && res.sanitizedUrl !== supabaseUrl) {
+      setSupabaseUrl(res.sanitizedUrl);
+    }
+
     if (res.success || supabaseUrl.trim()) {
-      saveSupabaseCredentials(supabaseUrl, supabaseKey);
+      saveSupabaseCredentials(res.sanitizedUrl || supabaseUrl, supabaseKey);
       resetSupabaseClient();
+      if (res.tablesReady) {
+        DataStore.syncFromSupabase();
+      }
     }
   };
 
   const copyMigrationSql = () => {
-    const sql = `-- Migration SQL: SAPA PASIEN RSUD Al-Mulk
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    const sql = `-- ====================================================================
+-- SAPA PASIEN — RSUD AL-MULK KOTA SUKABUMI
+-- Universal Cloud Database Schema & Realtime Setup (001_universal_schema.sql)
+-- ====================================================================
+
+CREATE TABLE IF NOT EXISTS public.app_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
 
 CREATE TABLE IF NOT EXISTS public.profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('administrator', 'supervisor', 'petugas', 'pimpinan')),
   department TEXT DEFAULT 'RSUD Al-Mulk',
   phone TEXT,
+  email TEXT,
+  avatar_url TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
 CREATE TABLE IF NOT EXISTS public.wards (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   code TEXT NOT NULL UNIQUE,
   floor INTEGER NOT NULL DEFAULT 1,
@@ -528,15 +571,113 @@ CREATE TABLE IF NOT EXISTS public.wards (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
-INSERT INTO public.wards (name, code, floor, capacity) VALUES
-  ('Ruang Fatimah', 'FATIMAH', 1, 17),
-  ('Ruang Aisyah', 'AISYAH', 1, 17),
-  ('Ruang Usman', 'USMAN', 2, 17),
-  ('Ruang Khadijah', 'KHADIJAH', 2, 17),
-  ('IGD', 'IGD', 1, 17),
-  ('Rawat Jalan', 'RAWAT_JALAN', 1, 17),
-  ('ICU', 'ICU', 1, 17)
-ON CONFLICT (code) DO NOTHING;
+CREATE TABLE IF NOT EXISTS public.visits (
+  id TEXT PRIMARY KEY,
+  visit_number TEXT NOT NULL UNIQUE,
+  patient_name TEXT NOT NULL,
+  ward_id TEXT NOT NULL,
+  ward_name TEXT,
+  room_number TEXT NOT NULL,
+  visited_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  visitor_id TEXT NOT NULL,
+  visitor_name TEXT,
+  companion_name TEXT,
+  companion_relation TEXT,
+  social_observation TEXT NOT NULL,
+  social_notes TEXT,
+  psychological_observation TEXT NOT NULL,
+  psychological_notes TEXT,
+  spiritual_observation TEXT NOT NULL,
+  spiritual_notes TEXT,
+  comfort_score INTEGER,
+  cleanliness_score INTEGER,
+  communication_score INTEGER,
+  responsiveness_score INTEGER,
+  overall_satisfaction_score INTEGER,
+  has_issue BOOLEAN NOT NULL DEFAULT false,
+  general_notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.issues (
+  id TEXT PRIMARY KEY,
+  visit_id TEXT NOT NULL,
+  patient_name TEXT,
+  visit_number TEXT,
+  ward_name TEXT,
+  room_number TEXT,
+  visitor_name TEXT,
+  category TEXT NOT NULL,
+  description TEXT NOT NULL,
+  priority TEXT NOT NULL CHECK (priority IN ('rendah', 'sedang', 'tinggi', 'kritis')),
+  status TEXT NOT NULL DEFAULT 'belum_ditindaklanjuti' CHECK (status IN (
+    'belum_ditindaklanjuti', 'dalam_proses', 'menunggu_konfirmasi', 'selesai', 'diteruskan'
+  )),
+  assigned_unit TEXT,
+  assigned_to TEXT,
+  initial_action TEXT,
+  due_at TIMESTAMPTZ,
+  resolved_at TIMESTAMPTZ,
+  resolution_notes TEXT,
+  verified_by TEXT,
+  verified_by_name TEXT,
+  verified_at TIMESTAMPTZ,
+  follow_up_logs JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE TABLE IF NOT EXISTS public.audit_logs (
+  id TEXT PRIMARY KEY,
+  actor_id TEXT,
+  actor_name TEXT,
+  action TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  record_id TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wards ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.issues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Settings universal access" ON public.app_settings;
+CREATE POLICY "Settings universal access" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Profiles universal access" ON public.profiles;
+CREATE POLICY "Profiles universal access" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Wards universal access" ON public.wards;
+CREATE POLICY "Wards universal access" ON public.wards FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Visits universal access" ON public.visits;
+CREATE POLICY "Visits universal access" ON public.visits FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Issues universal access" ON public.issues;
+CREATE POLICY "Issues universal access" ON public.issues FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Audit logs universal access" ON public.audit_logs;
+CREATE POLICY "Audit logs universal access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.app_settings;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.profiles;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.wards;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.visits;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.issues;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.audit_logs;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN
+    NULL;
+END $$;
 `;
     navigator.clipboard.writeText(sql);
     setCopiedMigration(true);
@@ -600,6 +741,78 @@ ON CONFLICT (code) DO NOTHING;
             <Shield className="w-3.5 h-3.5 text-blue-600" />
             <span>Login: {currentUser.full_name} ({currentUser.role})</span>
           </span>
+        </div>
+      </div>
+
+      {/* Cloud Sync Status Indicator for AI Studio ↔ Vercel */}
+      <div
+        className={`p-4 rounded-2xl border flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs ${
+          isSupabaseConfigured()
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+            : 'bg-amber-50 border-amber-200 text-amber-950'
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {isSupabaseConfigured() ? (
+            <Wifi className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <WifiOff className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          )}
+          <div>
+            <div className="font-bold text-slate-900 flex items-center gap-2">
+              <span>Status Koneksi:</span>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                  isSupabaseConfigured()
+                    ? 'bg-emerald-200 text-emerald-900'
+                    : 'bg-amber-200 text-amber-900'
+                }`}
+              >
+                {isSupabaseConfigured()
+                  ? '🟢 Terhubung ke Cloud Database (AI Studio ↔ Vercel Aktif)'
+                  : '🟡 Mode Lokal (Belum Terhubung ke Vercel)'}
+              </span>
+            </div>
+            <p className="text-[11px] mt-1 text-slate-600 leading-relaxed">
+              {isSupabaseConfigured()
+                ? 'Setiap perubahan profil RS, ruangan, pengguna, dan kunjungan di Google AI Studio tersinkronisasi 100% dua arah ke Vercel secara real-time.'
+                : 'Perubahan yang Anda lakukan saat ini hanya tersimpan di browser Google AI Studio. Agar tampil di Vercel, hubungkan Supabase atau gunakan Ekspor/Impor JSON di Tab "Sinkronisasi Cloud & Vercel".'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          {isSupabaseConfigured() ? (
+            <>
+              <button
+                type="button"
+                onClick={handlePushAllToCloud}
+                disabled={isPushingCloud}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors shadow-xs"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>{isPushingCloud ? 'Pushing...' : 'Push ke Cloud'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePullAllFromCloud}
+                disabled={isPullingCloud}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-900 rounded-lg font-medium transition-colors"
+              >
+                <DownloadCloud className="w-3.5 h-3.5" />
+                <span>{isPullingCloud ? 'Pulling...' : 'Pull dari Cloud'}</span>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('database')}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold transition-colors shadow-xs"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>Hubungkan ke Vercel Sekarang</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1586,21 +1799,48 @@ ON CONFLICT (code) DO NOTHING;
 
               {testResult && (
                 <div
-                  className={`p-3 rounded-lg flex items-start gap-2.5 ${
+                  className={`p-3.5 rounded-xl border space-y-2 ${
                     testResult.success
-                      ? 'bg-emerald-50 text-emerald-900 border border-emerald-200'
-                      : 'bg-red-50 text-red-900 border border-red-200'
+                      ? testResult.tablesReady === false
+                        ? 'bg-amber-50 text-amber-950 border-amber-300'
+                        : 'bg-emerald-50 text-emerald-950 border-emerald-200'
+                      : 'bg-red-50 text-red-950 border-red-200'
                   }`}
                 >
-                  {testResult.success ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
-                  )}
-                  <div>
-                    <p className="font-semibold">{testResult.success ? 'Berhasil' : 'Perhatian'}</p>
-                    <p className="mt-0.5 leading-relaxed">{testResult.message}</p>
+                  <div className="flex items-start gap-2.5">
+                    {testResult.success ? (
+                      <CheckCircle2
+                        className={`w-4 h-4 mt-0.5 shrink-0 ${
+                          testResult.tablesReady === false ? 'text-amber-600' : 'text-emerald-600'
+                        }`}
+                      />
+                    ) : (
+                      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                    )}
+                    <div>
+                      <p className="font-semibold text-xs">
+                        {testResult.success
+                          ? testResult.tablesReady === false
+                            ? 'Koneksi Terhubung! Langkah Terakhir: Buat Tabel Database'
+                            : 'Koneksi & Seluruh Tabel Berhasil Aktif'
+                          : 'Koneksi Gagal'}
+                      </p>
+                      <p className="mt-1 leading-relaxed text-[11px]">{testResult.message}</p>
+                    </div>
                   </div>
+
+                  {testResult.success && testResult.tablesReady === false && (
+                    <div className="pt-1 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={copyMigrationSql}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>{copiedMigration ? 'Tersalin!' : 'Salin SQL Migrasi Sekarang'}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1608,7 +1848,7 @@ ON CONFLICT (code) DO NOTHING;
                 <button
                   type="submit"
                   disabled={isTesting}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-xs"
                 >
                   {isTesting ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1621,13 +1861,54 @@ ON CONFLICT (code) DO NOTHING;
                 <button
                   type="button"
                   onClick={copyMigrationSql}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors font-medium"
                 >
                   <Copy className="w-3.5 h-3.5" />
                   <span>{copiedMigration ? 'Tersalin!' : 'Salin SQL Migrasi'}</span>
                 </button>
               </div>
             </form>
+
+            {/* Cloud Push & Pull Controls */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-emerald-600" />
+                  <span>Aksi Sinkronisasi Data Cloud Sekarang</span>
+                </h4>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  Kirimkan seluruh data profil, foto, pengguna, master ruangan, dan kunjungan yang sudah Anda buat di Google AI Studio ke database Supabase agar langsung muncul di Vercel:
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handlePushAllToCloud}
+                  disabled={isPushingCloud || !isSupabaseConfigured()}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors disabled:opacity-50"
+                >
+                  <UploadCloud className="w-4 h-4" />
+                  <span>{isPushingCloud ? 'Sedang Mengunggah...' : 'Unggah Data Lokal ke Cloud (Push)'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePullAllFromCloud}
+                  disabled={isPullingCloud || !isSupabaseConfigured()}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-xs rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <DownloadCloud className="w-4 h-4" />
+                  <span>{isPullingCloud ? 'Sedang Menarik...' : 'Tarik Data dari Cloud (Pull)'}</span>
+                </button>
+              </div>
+
+              {!isSupabaseConfigured() && (
+                <p className="text-[11px] text-amber-700 font-medium">
+                  * Tombol Push & Pull aktif setelah Anda menyimpan Project URL dan Anon Key Supabase yang valid.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* OPSI 3: SALIN MASTER DATA DEFAULT KE KODE REPOSITORY */}

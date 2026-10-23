@@ -25,14 +25,19 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onOpenSupabaseModal 
   const [isLiveConnected, setIsLiveConnected] = useState(false);
 
   useEffect(() => {
+    const updateConnection = () => {
+      const creds = getSupabaseCredentials();
+      const client = getSupabaseClient();
+      setIsLiveConnected(!!creds.url && !!creds.anonKey && !!client);
+    };
+
+    updateConnection();
+
     const unsub = DataStore.subscribe(() => {
       setCurrentUser(DataStore.getCurrentUser());
       setUsers(DataStore.getUsers());
+      updateConnection();
     });
-
-    const creds = getSupabaseCredentials();
-    const client = getSupabaseClient();
-    setIsLiveConnected(!!creds.url && !!creds.anonKey && !!client);
 
     return () => unsub();
   }, []);

@@ -124,13 +124,28 @@ File siap saji (*production bundle*) akan dibuat di dalam direktori `dist/`.
 
 ---
 
-## 🗄️ Skema Database Supabase (PostgreSQL)
+## 🗄️ Sinkronisasi Data Dua Arah: Google AI Studio ↔ Vercel
 
-Skrip SQL DDL lengkap yang mencakup tabel, relasi foreign key, indeks performa, fungsi trigger, dan aturan keamanan **Row Level Security (RLS)** tersedia di:
-```
-supabase/migrations/001_initial_schema.sql
-```
-Dapat dijalankan langsung pada menu **SQL Editor** di dashboard Supabase Anda.
+Secara default, browser mengisolasi *localStorage* per domain (Google AI Studio `ais-dev-*.run.app` dan Vercel `*.vercel.app` terpisah). Agar perubahan profil rumah sakit, foto, pengguna, master ruangan, dan kunjungan di Google AI Studio langsung terhubung dan tampil di Vercel:
+
+### Opsi A: Sinkronisasi Cloud Supabase Real-Time (Otomatis & Permanen)
+1. **Jalankan Skrip SQL Migrasi**:
+   Salin skrip di `supabase/migrations/001_initial_schema.sql` (atau klik tombol **Salin SQL Migrasi** di menu Pengaturan) dan jalankan pada menu **SQL Editor** di dashboard Supabase Anda.
+2. **Koneksikan di Google AI Studio**:
+   Buka menu **Pengaturan &gt; Sinkronisasi Cloud & Vercel**, masukkan `Project URL` dan `Anon Key` Supabase Anda, lalu klik **Uji & Simpan Koneksi** dan klik **Unggah Data Lokal ke Cloud (Push)**.
+3. **Koneksikan di Vercel**:
+   - Buka dashboard [Vercel](https://vercel.com) &gt; Pilih proyek &gt; **Settings** &gt; **Environment Variables**.
+   - Tambahkan:
+     - `VITE_SUPABASE_URL` = URL Supabase Anda
+     - `VITE_SUPABASE_ANON_KEY` = Anon Key Supabase Anda
+   - Lakukan **Redeploy** di Vercel.
+   - *Alternatif tanpa redeploy:* Anda juga dapat membuka situs web Vercel Anda, masuk ke menu **Pengaturan &gt; Sinkronisasi Cloud**, lalu masukkan URL & Anon Key yang sama.
+4. **Selesai**: Setiap ada penambahan/perubahan di Google AI Studio maupun Vercel, data akan langsung tersinkronisasi 100% dua arah secara real-time.
+
+### Opsi B: Ekspor & Impor Cadangan Data JSON (Instan Tanpa Database)
+1. Di Google AI Studio, buka **Pengaturan &gt; Sinkronisasi Cloud & Vercel** &gt; Klik **Unduh File Cadangan Data (.json)**.
+2. Buka situs Vercel Anda, buka tab yang sama, lalu klik **Pilih & Impor File JSON ke Sini**.
+3. Seluruh hasil editan langsung berpindah ke Vercel dalam 1 detik.
 
 ---
 
