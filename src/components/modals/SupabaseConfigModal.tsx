@@ -483,12 +483,17 @@ END $$;
                 <strong>Simpan Kredensial di AI Studio:</strong> Masukkan URL dan Anon Key di formulir di atas lalu klik <em>Uji & Simpan Koneksi</em>, kemudian klik <em>Unggah Data Lokal ke Cloud (Push)</em>.
               </li>
               <li>
-                <strong>Hubungkan ke Vercel:</strong> Buka dashboard Vercel Anda &rarr; <em>Settings</em> &rarr; <em>Environment Variables</em>, lalu tambahkan:
-                <div className="my-1.5 p-2 bg-slate-100 rounded-md font-mono text-[10px] text-slate-800 space-y-1">
-                  <div>VITE_SUPABASE_URL = {url || 'https://your-project.supabase.co'}</div>
-                  <div>VITE_SUPABASE_ANON_KEY = {anonKey || 'your-anon-key'}</div>
+                <strong>Hubungkan ke Vercel (Wajib untuk Sinkronisasi Publik):</strong>
+                <p className="mt-0.5 text-slate-500">
+                  Karena browser memisahkan memori penyimpanan lokal (localStorage) per domain dan per HP pengguna, <strong>Anda harus menambahkan 2 Environment Variables ini di Vercel</strong> agar setiap petugas/perawat yang membuka web Vercel otomatis tersambung ke database pusat:
+                </p>
+                <div className="my-1.5 p-2.5 bg-slate-100 rounded-lg font-mono text-[10px] text-slate-800 space-y-1 border border-slate-200">
+                  <div><strong>Key:</strong> VITE_SUPABASE_URL <br /><strong>Value:</strong> {url || 'https://your-project.supabase.co'}</div>
+                  <div className="pt-1 border-t border-slate-200"><strong>Key:</strong> VITE_SUPABASE_ANON_KEY <br /><strong>Value:</strong> {anonKey || 'your-anon-key'}</div>
                 </div>
-                <em>Atau alternatif cepat:</em> buka web Vercel Anda langsung, masuk ke menu <strong>Pengaturan &rarr; Sinkronisasi Cloud</strong>, dan masukkan URL & Anon Key yang sama!
+                <p className="text-slate-500">
+                  Setelah menambahkannya di Vercel (<strong>Project Settings &rarr; Environment Variables</strong>), buka tab <strong>Deployments</strong> di Vercel &rarr; klik tanda titik tiga (...) pada deployment terbaru &rarr; pilih <strong>Redeploy</strong>.
+                </p>
               </li>
             </ol>
           </div>

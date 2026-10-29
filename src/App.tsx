@@ -66,7 +66,10 @@ export default function App() {
           )}
 
           {currentTab === 'visits' && (
-            <VisitInputModule onSuccessNavigate={(tab) => setCurrentTab(tab)} />
+            <VisitInputModule
+              onSuccessNavigate={(tab) => setCurrentTab(tab)}
+              onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+            />
           )}
 
           {currentTab === 'monitoring' && (

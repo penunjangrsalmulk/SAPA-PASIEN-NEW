@@ -1379,7 +1379,7 @@ export class DataStore {
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('visits').insert([
+        const { error: visitErr } = await supabase.from('visits').insert([
           {
             id: newVisit.id,
             visit_number: newVisit.visit_number,
@@ -1410,8 +1410,12 @@ export class DataStore {
           },
         ]);
 
+        if (visitErr) {
+          console.error('Supabase visit push failed (table missing or RLS error):', visitErr);
+        }
+
         if (newIssue) {
-          await supabase.from('issues').insert([
+          const { error: issueErr } = await supabase.from('issues').insert([
             {
               id: newIssue.id,
               visit_id: newIssue.visit_id,
@@ -1433,9 +1437,12 @@ export class DataStore {
               updated_at: newIssue.updated_at,
             },
           ]);
+          if (issueErr) {
+            console.error('Supabase issue push failed:', issueErr);
+          }
         }
       } catch (err) {
-        console.warn('Supabase visit push error:', err);
+        console.warn('Supabase visit push exception:', err);
       }
     }
 
@@ -1768,7 +1775,7 @@ export class DataStore {
 
     try {
       // 1. Push app_settings
-      await supabase.from('app_settings').upsert([
+      const { error: errSettings } = await supabase.from('app_settings').upsert([
         {
           key: 'hospital_profile',
           value: this.hospitalProfile,
@@ -1786,9 +1793,28 @@ export class DataStore {
         },
       ]);
 
+      if (errSettings) {
+        if (
+          errSettings.code === 'PGRST125' ||
+          errSettings.code === '42P01' ||
+          errSettings.message?.includes('Invalid path') ||
+          errSettings.message?.includes('relation')
+        ) {
+          return {
+            success: false,
+            message:
+              'Gagal mengunggah: Tabel database belum dibuat di proyek Supabase Anda (PGRST125: Tabel belum ada). Silakan salin & jalankan Script SQL Migrasi di menu SQL Editor Supabase terlebih dahulu!',
+          };
+        }
+        return {
+          success: false,
+          message: `Gagal mengunggah pengaturan: ${errSettings.message} (Kode: ${errSettings.code || 'UNKNOWN'})`,
+        };
+      }
+
       // 2. Push wards
       if (this.wards.length > 0) {
-        await supabase.from('wards').upsert(
+        const { error: errWards } = await supabase.from('wards').upsert(
           this.wards.map((w) => ({
             id: w.id,
             name: w.name,
@@ -1800,11 +1826,14 @@ export class DataStore {
             updated_at: w.updated_at,
           }))
         );
+        if (errWards) {
+          return { success: false, message: `Gagal mengunggah data master ruangan: ${errWards.message}` };
+        }
       }
 
       // 3. Push profiles
       if (this.users.length > 0) {
-        await supabase.from('profiles').upsert(
+        const { error: errProfiles } = await supabase.from('profiles').upsert(
           this.users.map((u) => ({
             id: u.id,
             full_name: u.full_name,
@@ -1818,11 +1847,14 @@ export class DataStore {
             updated_at: u.updated_at,
           }))
         );
+        if (errProfiles) {
+          return { success: false, message: `Gagal mengunggah akun pengguna: ${errProfiles.message}` };
+        }
       }
 
       // 4. Push visits
       if (this.visits.length > 0) {
-        await supabase.from('visits').upsert(
+        const { error: errVisits } = await supabase.from('visits').upsert(
           this.visits.map((v) => ({
             id: v.id,
             visit_number: v.visit_number,
@@ -1852,11 +1884,14 @@ export class DataStore {
             updated_at: v.updated_at,
           }))
         );
+        if (errVisits) {
+          return { success: false, message: `Gagal mengunggah data kunjungan: ${errVisits.message}` };
+        }
       }
 
       // 5. Push issues
       if (this.issues.length > 0) {
-        await supabase.from('issues').upsert(
+        const { error: errIssues } = await supabase.from('issues').upsert(
           this.issues.map((i) => ({
             id: i.id,
             visit_id: i.visit_id,
@@ -1883,6 +1918,9 @@ export class DataStore {
             updated_at: i.updated_at,
           }))
         );
+        if (errIssues) {
+          return { success: false, message: `Gagal mengunggah keluhan/masalah: ${errIssues.message}` };
+        }
       }
 
       this.addAuditLog({

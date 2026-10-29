@@ -25,12 +25,18 @@ import {
   IssueStatus,
 } from '../../types';
 import { DataStore } from '../../lib/dataStore';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { Wifi, WifiOff } from 'lucide-react';
 
 interface VisitInputModuleProps {
   onSuccessNavigate: (tab: string) => void;
+  onOpenSupabaseModal?: () => void;
 }
 
-export const VisitInputModule: React.FC<VisitInputModuleProps> = ({ onSuccessNavigate }) => {
+export const VisitInputModule: React.FC<VisitInputModuleProps> = ({
+  onSuccessNavigate,
+  onOpenSupabaseModal,
+}) => {
   const currentUser: UserProfile = useMemo(() => DataStore.getCurrentUser(), []);
   const wards: Ward[] = useMemo(() => DataStore.getWards(), []);
 
@@ -259,8 +265,42 @@ export const VisitInputModule: React.FC<VisitInputModuleProps> = ({ onSuccessNav
     );
   };
 
+  const isCloudActive = isSupabaseConfigured();
+
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
+      {/* Cloud Integration Warning Banner for Vercel / Offline Mode */}
+      {!isCloudActive && (
+        <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg text-amber-700 shrink-0 mt-0.5">
+              <WifiOff className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                <span>Mode Penyimpanan Lokal (Demo / Offline)</span>
+                <span className="px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded text-[10px] font-semibold">
+                  Belum Terhubung Cloud
+                </span>
+              </h4>
+              <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                Data yang diinput pada browser perangkat ini hanya tersimpan di memori lokal dan <strong>belum terintegrasi dengan Google AI Studio / Vercel pusat</strong>.
+                Agar data tersimpan ke database cloud bersama, pastikan Administrator telah memasang <em>Environment Variables</em> di Vercel atau masukkan kredensial Supabase.
+              </p>
+            </div>
+          </div>
+          {onOpenSupabaseModal && (
+            <button
+              type="button"
+              onClick={onOpenSupabaseModal}
+              className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg shrink-0 transition-colors shadow-xs"
+            >
+              Hubungkan Supabase
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Title & Privacy Policy Kicker */}
       <div className="bg-white p-5 rounded-xl border border-slate-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
