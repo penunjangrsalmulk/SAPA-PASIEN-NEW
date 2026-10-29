@@ -4,6 +4,20 @@ const STORAGE_KEY_URL = 'sapa_supabase_url';
 const STORAGE_KEY_KEY = 'sapa_supabase_key';
 
 /**
+ * Ekstrak Project Reference ID dari URL Supabase jika ada.
+ * Contoh: https://xyzcompany.supabase.co -> xyzcompany
+ */
+export function extractProjectRef(rawUrl: string): string | null {
+  if (!rawUrl) return null;
+  const clean = rawUrl.trim();
+  const match = clean.match(/(?:dashboard\/project\/|^https?:\/\/)([a-zA-Z0-9_-]{15,40})(?:\.supabase\.co|\/|$)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return null;
+}
+
+/**
  * Normalisasi URL Supabase agar bebas dari trailing slash, /rest/v1,
  * atau format URL dashboard browser yang tidak sengaja ditempel.
  */
@@ -19,8 +33,8 @@ export function sanitizeSupabaseUrl(rawUrl: string): string {
     }
   }
 
-  // 2. Jika pengguna hanya menempelkan Project Reference ID (15-30 karakter alfanumerik)
-  if (/^[a-zA-Z0-9_-]{15,35}$/.test(url)) {
+  // 2. Jika pengguna hanya menempelkan Project Reference ID (15-40 karakter alfanumerik)
+  if (/^[a-zA-Z0-9_-]{15,40}$/.test(url)) {
     return `https://${url}.supabase.co`;
   }
 
@@ -122,10 +136,34 @@ export function resetSupabaseClient() {
   currentClientConfig = '';
 }
 
+export interface TablesStatus {
+  app_settings: boolean;
+  wards: boolean;
+  profiles: boolean;
+  visits: boolean;
+  issues: boolean;
+  audit_logs: boolean;
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  sanitizedUrl?: string;
+  projectRef?: string;
+  credentialsValid?: boolean;
+  tablesReady?: boolean;
+  tablesStatus?: TablesStatus;
+}
+
+/**
+ * Uji konektivitas Supabase secara komprehensif:
+ * Tahap 1: Verifikasi apakah URL dan Anon Key valid (lewat REST root endpoint).
+ * Tahap 2: Verifikasi keberadaan dan aksesibilitas masing-masing tabel aplikasi.
+ */
 export async function testSupabaseConnection(
   rawUrl: string,
   rawAnonKey: string
-): Promise<{ success: boolean; message: string; tablesReady?: boolean; sanitizedUrl?: string }> {
+): Promise<TestConnectionResult> {
   try {
     if (!rawUrl || !rawAnonKey) {
       return { success: false, message: 'URL dan Anon Key Supabase wajib diisi.' };
@@ -133,12 +171,16 @@ export async function testSupabaseConnection(
 
     const url = sanitizeSupabaseUrl(rawUrl);
     const anonKey = rawAnonKey.trim().replace(/^['"]|['"]$/g, '');
+    const projectRef = extractProjectRef(url) || undefined;
 
     if (!url.startsWith('https://') && !url.startsWith('http://')) {
-      return { success: false, message: 'Format URL Supabase tidak valid. Gunakan format https://<id-proyek>.supabase.co' };
+      return {
+        success: false,
+        message: 'Format URL Supabase tidak valid. Gunakan format https://<project-ref>.supabase.co',
+      };
     }
 
-    // Gunakan createClient langsung untuk menguji konektivitas & autentikasi
+    // Uji konektivitas langsung menggunakan Supabase Client resmi
     const testClient = createClient(url, anonKey, {
       auth: {
         persistSession: false,
@@ -146,78 +188,127 @@ export async function testSupabaseConnection(
       },
     });
 
-    // Uji query ke salah satu tabel
-    const { error } = await testClient.from('wards').select('id').limit(1);
+    const tables = ['app_settings', 'wards', 'profiles', 'visits', 'issues', 'audit_logs'] as const;
+    const tablesStatus: TablesStatus = {
+      app_settings: false,
+      wards: false,
+      profiles: false,
+      visits: false,
+      issues: false,
+      audit_logs: false,
+    };
 
-    if (error) {
-      const errMsg = (error.message || '').toLowerCase();
-      const errDetails = (error.details || '').toLowerCase();
-      const errStatus = (error as unknown as { status?: number })?.status;
+    let hasAuthError = false;
+    let authErrorMessage = '';
+    let hasNetworkError = false;
+    let readyCount = 0;
 
-      // 1. Kredensial tidak valid (JWT expired/invalid, API key salah, 401/403)
-      const isAuthError =
-        error.code === 'PGRST301' ||
-        errStatus === 401 ||
-        errStatus === 403 ||
-        errMsg.includes('jwt') ||
-        errMsg.includes('api key') ||
-        errMsg.includes('apikey') ||
-        errMsg.includes('unauthorized') ||
-        errMsg.includes('invalid claim') ||
-        errMsg.includes('signature');
+    const checks = await Promise.allSettled(
+      tables.map((tbl) => testClient.from(tbl).select('*', { count: 'exact', head: true }))
+    );
 
-      if (isAuthError) {
-        return {
-          success: false,
-          sanitizedUrl: url,
-          message: `Kredensial ditolak (${error.code || errStatus || '401/403'}): Pastikan Anda menyalin Supabase "anon public" key yang benar dari menu Project Settings > API di dashboard Supabase Anda.`,
-        };
+    checks.forEach((res, idx) => {
+      const tblName = tables[idx];
+      if (res.status === 'fulfilled') {
+        const queryRes = res.value;
+        if (!queryRes.error) {
+          tablesStatus[tblName] = true;
+          readyCount++;
+        } else {
+          const err = queryRes.error;
+          const msg = (err.message || '').toLowerCase();
+          const code = err.code || '';
+          const status = (err as unknown as { status?: number })?.status;
+
+          // Catatan penting: PostgREST kode PGRST125 / 42P01 (tabel belum ada) BUKAN kesalahan auth.
+          // Munculnya PGRST125 justru membuktikan bahwa kredensial API key DITERIMA oleh Supabase!
+          const isMissingTable =
+            code === 'PGRST125' ||
+            code === '42P01' ||
+            code === 'PGRST204' ||
+            code === 'PGRST205' ||
+            status === 404 ||
+            msg.includes('invalid path') ||
+            msg.includes('relation') ||
+            msg.includes('does not exist') ||
+            msg.includes('could not find');
+
+          const isAuth =
+            !isMissingTable &&
+            (code === 'PGRST301' ||
+              status === 401 ||
+              status === 403 ||
+              msg.includes('invalid api key') ||
+              msg.includes('jwt') ||
+              msg.includes('unauthorized') ||
+              msg.includes('signature'));
+
+          if (isAuth) {
+            hasAuthError = true;
+            authErrorMessage = err.message || 'Kredensial API Key ditolak.';
+          }
+
+          tablesStatus[tblName] = false;
+        }
+      } else {
+        const reason = res.reason;
+        const msg = String(reason || '');
+        if (msg.includes('fetch') || msg.includes('network') || msg.includes('Failed to fetch')) {
+          hasNetworkError = true;
+        }
+        tablesStatus[tblName] = false;
       }
+    });
 
-      // 2. PGRST125 / 42P01: URL & Kunci VALID, tetapi tabel database belum dibuat di Supabase
-      const isMissingTable =
-        error.code === 'PGRST125' ||
-        error.code === '42P01' ||
-        error.code === 'PGRST200' ||
-        error.code === 'PGRST204' ||
-        error.code === 'PGRST205' ||
-        errStatus === 404 ||
-        errMsg.includes('invalid path') ||
-        errMsg.includes('relation') ||
-        errMsg.includes('does not exist') ||
-        errMsg.includes('could not find') ||
-        errMsg.includes('not found') ||
-        errDetails.includes('relation') ||
-        errDetails.includes('does not exist');
-
-      if (isMissingTable) {
-        return {
-          success: true,
-          tablesReady: false,
-          sanitizedUrl: url,
-          message:
-            'Kredensial URL & Anon Key Supabase VALID dan berhasil terhubung! Tabel database belum dibuat di proyek Supabase Anda (PGRST125: Tabel belum ada). Silakan salin & jalankan script SQL migrasi yang disediakan di bawah ini pada menu SQL Editor di Supabase.',
-        };
-      }
-
-      // 3. Error lainnya
+    // 1. Kesalahan koneksi jaringan / domain tidak ditemukan
+    if (hasNetworkError && readyCount === 0) {
       return {
         success: false,
         sanitizedUrl: url,
-        message: `Koneksi gagal: ${error.message} (Kode: ${error.code || 'UNKNOWN'})`,
+        projectRef,
+        message: `Tidak dapat menghubungi host Supabase (${url}). Pastikan URL proyek benar dan koneksi internet Anda aktif.`,
       };
     }
 
-    // Jika query berhasil tanpa error, berarti koneksi valid dan tabel sudah ada
+    // 2. Kredensial benar-benar ditolak (JWT salah / API key invalid)
+    if (hasAuthError && readyCount === 0) {
+      return {
+        success: false,
+        sanitizedUrl: url,
+        projectRef,
+        credentialsValid: false,
+        message: `Kredensial ditolak (${authErrorMessage}): Pastikan Anda menyalin Supabase "anon public" key dari menu Project Settings > API di dashboard Supabase Anda.`,
+      };
+    }
+
+    // 3. Kredensial VALID, tetapi tabel database belum dibuat (PGRST125)
+    const allTablesReady = readyCount === tables.length;
+    if (!allTablesReady) {
+      const missingList = tables.filter((t) => !tablesStatus[t]).join(', ');
+      return {
+        success: true,
+        credentialsValid: true,
+        tablesReady: false,
+        sanitizedUrl: url,
+        projectRef,
+        tablesStatus,
+        message: `Kredensial URL & Anon Key 100% VALID dan Berhasil Terhubung ke Supabase! 🎉 Namun tabel database belum dibuat di proyek Anda (${readyCount}/${tables.length} tabel siap. Belum ada: ${missingList}). Silakan buka tab "Script SQL Migrasi", salin scriptnya dan jalankan di SQL Editor Supabase.`,
+      };
+    }
+
+    // 4. Kredensial valid dan seluruh tabel siap
     return {
       success: true,
+      credentialsValid: true,
       tablesReady: true,
       sanitizedUrl: url,
+      projectRef,
+      tablesStatus,
       message:
-        'Koneksi ke Supabase PostgreSQL berhasil dan tabel aktif! Sinkronisasi dua arah real-time antara Google AI Studio & Vercel aktif.',
+        'Koneksi ke Supabase PostgreSQL berhasil dan seluruh tabel (6/6) aktif! Sinkronisasi dua arah real-time antara Google AI Studio & Vercel aktif.',
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, message: `Kesalahan jaringan: ${msg}` };
+    return { success: false, message: `Kesalahan pemeriksaan: ${msg}` };
   }
 }

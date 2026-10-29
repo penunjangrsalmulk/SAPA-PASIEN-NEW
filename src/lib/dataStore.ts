@@ -13,6 +13,15 @@ import {
   IssuePriority,
 } from '../types';
 import { getSupabaseClient, isSupabaseConfigured } from './supabase';
+import { UNIVERSAL_SCHEMA_SQL } from './supabaseSchema';
+
+export interface MutationResult<T = unknown> {
+  success: boolean;
+  cloudSynced: boolean;
+  message: string;
+  data?: T;
+  cloudError?: string;
+}
 
 // Master Ruangan Rawat Inap RSUD Al-Mulk Kota Sukabumi
 export const INITIAL_WARDS: Ward[] = [
@@ -799,7 +808,7 @@ export class DataStore {
     return { ...this.hospitalProfile };
   }
 
-  static async updateHospitalProfile(updates: Partial<HospitalProfile>) {
+  static async updateHospitalProfile(updates: Partial<HospitalProfile>): Promise<MutationResult<HospitalProfile>> {
     this.hospitalProfile = {
       ...this.hospitalProfile,
       ...updates,
@@ -815,20 +824,41 @@ export class DataStore {
     });
 
     // Cloud sync to Supabase app_settings
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
+
     if (supabase) {
       try {
-        await supabase.from('app_settings').upsert({
+        const { error } = await supabase.from('app_settings').upsert({
           key: 'hospital_profile',
           value: this.hospitalProfile,
           updated_at: new Date().toISOString(),
         });
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase profile sync error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase profile sync error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase profile sync exception:', err);
       }
     }
 
     this.notify();
+    return {
+      success: true,
+      cloudSynced,
+      cloudError,
+      data: this.hospitalProfile,
+      message: cloudSynced
+        ? 'Profil rumah sakit berhasil disimpan dan disinkronkan ke Supabase Cloud!'
+        : cloudError
+        ? `Profil disimpan lokal, namun sinkronisasi cloud gagal: ${cloudError}`
+        : 'Profil disimpan di penyimpanan lokal (Supabase belum terhubung).',
+    };
   }
 
   // --- Auth & Users ---
@@ -860,7 +890,9 @@ export class DataStore {
     return this.users.find((u) => u.id === id);
   }
 
-  static async createUser(user: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>): Promise<UserProfile> {
+  static async createUser(
+    user: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<UserProfile & { _mutationResult?: MutationResult<UserProfile> }> {
     const newUser: UserProfile = {
       ...user,
       id: `usr-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -878,10 +910,12 @@ export class DataStore {
       metadata: { name: newUser.full_name, role: newUser.role, email: newUser.email },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('profiles').upsert({
+        const { error } = await supabase.from('profiles').upsert({
           id: newUser.id,
           full_name: newUser.full_name,
           role: newUser.role,
@@ -893,18 +927,41 @@ export class DataStore {
           created_at: newUser.created_at,
           updated_at: newUser.updated_at,
         });
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase user insert error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase user insert error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase user insert exception:', err);
       }
     }
 
     this.notify();
-    return newUser;
+    const resultObj: UserProfile & { _mutationResult?: MutationResult<UserProfile> } = {
+      ...newUser,
+      _mutationResult: {
+        success: true,
+        cloudSynced,
+        cloudError,
+        data: newUser,
+        message: cloudSynced
+          ? 'Pengguna baru berhasil ditambahkan dan disinkronkan ke Supabase Cloud!'
+          : cloudError
+          ? `Pengguna disimpan di lokal, gagal sync cloud: ${cloudError}`
+          : 'Pengguna disimpan di penyimpanan lokal.',
+      },
+    };
+    return resultObj;
   }
 
-  static async updateUser(id: string, updates: Partial<UserProfile>): Promise<boolean> {
+  static async updateUser(id: string, updates: Partial<UserProfile>): Promise<MutationResult<UserProfile>> {
     const index = this.users.findIndex((u) => u.id === id);
-    if (index === -1) return false;
+    if (index === -1) {
+      return { success: false, cloudSynced: false, message: 'Pengguna tidak ditemukan.' };
+    }
 
     this.users[index] = {
       ...this.users[index],
@@ -929,31 +986,52 @@ export class DataStore {
       metadata: { updates },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('profiles')
           .update({
             ...updates,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id);
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase user update error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase user update error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase user update exception:', err);
       }
     }
 
     this.notify();
-    return true;
+    return {
+      success: true,
+      cloudSynced,
+      cloudError,
+      data: this.users[index],
+      message: cloudSynced
+        ? 'Data pengguna berhasil diperbarui dan disinkronkan ke cloud!'
+        : cloudError
+        ? `Diperbarui lokal, gagal sync cloud: ${cloudError}`
+        : 'Data pengguna diperbarui di penyimpanan lokal.',
+    };
   }
 
-  static async deleteUser(id: string): Promise<boolean> {
+  static async deleteUser(id: string): Promise<MutationResult> {
     if (this.currentUser.id === id) {
-      return false;
+      return { success: false, cloudSynced: false, message: 'Tidak dapat menghapus akun yang sedang aktif digunakan.' };
     }
     const user = this.users.find((u) => u.id === id);
-    if (!user) return false;
+    if (!user) {
+      return { success: false, cloudSynced: false, message: 'Pengguna tidak ditemukan.' };
+    }
 
     this.users = this.users.filter((u) => u.id !== id);
     this.saveUsers();
@@ -966,17 +1044,35 @@ export class DataStore {
       metadata: { name: user.full_name, role: user.role },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('profiles').delete().eq('id', id);
+        const { error } = await supabase.from('profiles').delete().eq('id', id);
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase user delete error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase user delete error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase user delete exception:', err);
       }
     }
 
     this.notify();
-    return true;
+    return {
+      success: true,
+      cloudSynced,
+      cloudError,
+      message: cloudSynced
+        ? 'Pengguna berhasil dihapus dari cloud dan lokal!'
+        : cloudError
+        ? `Dihapus dari lokal, gagal hapus di cloud: ${cloudError}`
+        : 'Pengguna dihapus dari penyimpanan lokal.',
+    };
   }
 
   // --- Master Ruangan (Wards) ---
@@ -988,7 +1084,9 @@ export class DataStore {
     return this.wards.find((w) => w.id === id);
   }
 
-  static async createWard(ward: Omit<Ward, 'id' | 'created_at' | 'updated_at'>): Promise<Ward> {
+  static async createWard(
+    ward: Omit<Ward, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<Ward & { _mutationResult?: MutationResult<Ward> }> {
     const newWard: Ward = {
       ...ward,
       id: `ward-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1006,10 +1104,12 @@ export class DataStore {
       metadata: { name: newWard.name, code: newWard.code, capacity: newWard.capacity },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('wards').upsert({
+        const { error } = await supabase.from('wards').upsert({
           id: newWard.id,
           name: newWard.name,
           code: newWard.code,
@@ -1019,18 +1119,40 @@ export class DataStore {
           created_at: newWard.created_at,
           updated_at: newWard.updated_at,
         });
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase ward insert error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase ward insert error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase ward insert exception:', err);
       }
     }
 
     this.notify();
-    return newWard;
+    return {
+      ...newWard,
+      _mutationResult: {
+        success: true,
+        cloudSynced,
+        cloudError,
+        data: newWard,
+        message: cloudSynced
+          ? 'Ruangan baru berhasil ditambahkan dan disinkronkan ke Supabase Cloud!'
+          : cloudError
+          ? `Ruangan disimpan lokal, gagal sync cloud: ${cloudError}`
+          : 'Ruangan baru disimpan di penyimpanan lokal.',
+      },
+    };
   }
 
-  static async updateWard(id: string, updates: Partial<Ward>): Promise<boolean> {
+  static async updateWard(id: string, updates: Partial<Ward>): Promise<MutationResult<Ward>> {
     const index = this.wards.findIndex((w) => w.id === id);
-    if (index === -1) return false;
+    if (index === -1) {
+      return { success: false, cloudSynced: false, message: 'Ruangan tidak ditemukan.' };
+    }
 
     this.wards[index] = {
       ...this.wards[index],
@@ -1047,28 +1169,49 @@ export class DataStore {
       metadata: { updates },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('wards')
           .update({
             ...updates,
             updated_at: new Date().toISOString(),
           })
           .eq('id', id);
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase ward update error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase ward update error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase ward update exception:', err);
       }
     }
 
     this.notify();
-    return true;
+    return {
+      success: true,
+      cloudSynced,
+      cloudError,
+      data: this.wards[index],
+      message: cloudSynced
+        ? 'Ruangan berhasil diperbarui dan disinkronkan ke Supabase Cloud!'
+        : cloudError
+        ? `Diperbarui di lokal, gagal sync cloud: ${cloudError}`
+        : 'Ruangan diperbarui di penyimpanan lokal.',
+    };
   }
 
-  static async deleteWard(id: string): Promise<boolean> {
+  static async deleteWard(id: string): Promise<MutationResult> {
     const ward = this.wards.find((w) => w.id === id);
-    if (!ward) return false;
+    if (!ward) {
+      return { success: false, cloudSynced: false, message: 'Ruangan tidak ditemukan.' };
+    }
 
     this.wards = this.wards.filter((w) => w.id !== id);
     this.saveWards();
@@ -1081,17 +1224,35 @@ export class DataStore {
       metadata: { name: ward.name, code: ward.code },
     });
 
+    let cloudSynced = false;
+    let cloudError: string | undefined;
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
-        await supabase.from('wards').delete().eq('id', id);
+        const { error } = await supabase.from('wards').delete().eq('id', id);
+        if (error) {
+          cloudError = error.message;
+          console.error('Supabase ward delete error:', error);
+        } else {
+          cloudSynced = true;
+        }
       } catch (err) {
-        console.warn('Supabase ward delete error:', err);
+        cloudError = err instanceof Error ? err.message : String(err);
+        console.warn('Supabase ward delete exception:', err);
       }
     }
 
     this.notify();
-    return true;
+    return {
+      success: true,
+      cloudSynced,
+      cloudError,
+      message: cloudSynced
+        ? 'Ruangan berhasil dihapus dari cloud dan lokal!'
+        : cloudError
+        ? `Dihapus dari lokal, gagal hapus di cloud: ${cloudError}`
+        : 'Ruangan dihapus dari penyimpanan lokal.',
+    };
   }
 
   // --- SLA Settings & Categories ---
@@ -1412,6 +1573,10 @@ export class DataStore {
 
         if (visitErr) {
           console.error('Supabase visit push failed (table missing or RLS error):', visitErr);
+          (newVisit as unknown as Record<string, unknown>)._cloudSynced = false;
+          (newVisit as unknown as Record<string, unknown>)._cloudError = visitErr.message;
+        } else {
+          (newVisit as unknown as Record<string, unknown>)._cloudSynced = true;
         }
 
         if (newIssue) {
@@ -1443,7 +1608,12 @@ export class DataStore {
         }
       } catch (err) {
         console.warn('Supabase visit push exception:', err);
+        (newVisit as unknown as Record<string, unknown>)._cloudSynced = false;
+        (newVisit as unknown as Record<string, unknown>)._cloudError =
+          err instanceof Error ? err.message : String(err);
       }
+    } else {
+      (newVisit as unknown as Record<string, unknown>)._cloudSynced = false;
     }
 
     this.notify();
@@ -1666,6 +1836,23 @@ export class DataStore {
         .from('app_settings')
         .select('*');
 
+      // Check for missing table errors (PGRST125 / 42P01)
+      if (
+        settingsError &&
+        (settingsError.code === 'PGRST125' ||
+          settingsError.code === '42P01' ||
+          settingsError.message?.includes('relation') ||
+          settingsError.message?.includes('does not exist') ||
+          settingsError.message?.includes('Invalid path'))
+      ) {
+        this.isSyncing = false;
+        return {
+          success: false,
+          message:
+            'Tabel database Supabase belum dibuat (Kode: PGRST125). Silakan buka menu Pengaturan Database Supabase, salin script SQL migrasi, dan jalankan di SQL Editor Supabase Anda.',
+        };
+      }
+
       if (!settingsError && settingsData && settingsData.length > 0) {
         for (const item of settingsData) {
           if (item.key === 'hospital_profile' && item.value) {
@@ -1742,8 +1929,18 @@ export class DataStore {
         this.saveAudit();
       }
 
-      // If remote database is completely empty (fresh project), auto-seed from local data!
+      // Check if any error occurred across all tables
+      const hasAnyQueryError = !!(
+        settingsError ||
+        wardsError ||
+        profilesError ||
+        visitsError ||
+        issuesError
+      );
+
+      // If remote database is completely empty (fresh migration executed), auto-seed from local data!
       const isRemoteEmpty =
+        !hasAnyQueryError &&
         (!wardsData || wardsData.length === 0) &&
         (!profilesData || profilesData.length === 0) &&
         (!settingsData || settingsData.length === 0);

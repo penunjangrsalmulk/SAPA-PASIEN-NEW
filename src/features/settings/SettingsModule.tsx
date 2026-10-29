@@ -112,9 +112,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
       showToast('Nama rumah sakit wajib diisi.', 'error');
       return;
     }
-    await DataStore.updateHospitalProfile(profileForm);
+    const res = await DataStore.updateHospitalProfile(profileForm);
     setIsEditingProfile(false);
-    showToast('Profil dan foto RSUD Al-Mulk berhasil diperbarui.');
+    showToast(res.message, res.cloudError ? 'error' : 'success');
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -162,9 +162,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
       showToast('Nama lengkap wajib diisi.', 'error');
       return;
     }
-    await DataStore.updateUser(currentUser.id, myAccountForm);
+    const res = await DataStore.updateUser(currentUser.id, myAccountForm);
     setIsEditingMyAccount(false);
-    showToast('Profil akun Anda berhasil diperbarui.');
+    showToast(res.message, res.cloudError ? 'error' : 'success');
   };
 
   // ----------------------------------------------------
@@ -219,11 +219,12 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     }
 
     if (editingUser) {
-      await DataStore.updateUser(editingUser.id, userFormData);
-      showToast(`Data pengguna "${userFormData.full_name}" berhasil diperbarui.`);
+      const res = await DataStore.updateUser(editingUser.id, userFormData);
+      showToast(res.message, res.cloudError ? 'error' : 'success');
     } else {
-      await DataStore.createUser(userFormData);
-      showToast(`Pengguna baru "${userFormData.full_name}" berhasil ditambahkan.`);
+      const created = await DataStore.createUser(userFormData);
+      const msg = created._mutationResult?.message || `Pengguna "${userFormData.full_name}" berhasil ditambahkan.`;
+      showToast(msg, created._mutationResult?.cloudError ? 'error' : 'success');
     }
     setIsUserModalOpen(false);
   };
@@ -234,9 +235,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
       return;
     }
     const newStatus = !user.is_active;
-    await DataStore.updateUser(user.id, { is_active: newStatus });
+    const res = await DataStore.updateUser(user.id, { is_active: newStatus });
     showToast(
-      `Status akun "${user.full_name}" diubah menjadi ${newStatus ? 'Aktif' : 'Nonaktif'}.`
+      res.cloudSynced
+        ? `Status akun "${user.full_name}" diubah ke ${newStatus ? 'Aktif' : 'Nonaktif'} (Tersinkron ke Cloud).`
+        : `Status akun "${user.full_name}" diubah ke ${newStatus ? 'Aktif' : 'Nonaktif'}.`
     );
   };
 
@@ -247,8 +250,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
       setUserToDelete(null);
       return;
     }
-    await DataStore.deleteUser(userToDelete.id);
-    showToast(`Pengguna "${userToDelete.full_name}" berhasil dihapus.`);
+    const res = await DataStore.deleteUser(userToDelete.id);
+    showToast(res.message, res.cloudError ? 'error' : 'success');
     setUserToDelete(null);
   };
 
@@ -301,33 +304,36 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ onOpenSupabaseMo
     }
 
     if (editingWard) {
-      await DataStore.updateWard(editingWard.id, {
+      const res = await DataStore.updateWard(editingWard.id, {
         ...wardFormData,
         code: wardFormData.code.toUpperCase().trim(),
       });
-      showToast(`Ruangan "${wardFormData.name}" berhasil diperbarui.`);
+      showToast(res.message, res.cloudError ? 'error' : 'success');
     } else {
-      await DataStore.createWard({
+      const created = await DataStore.createWard({
         ...wardFormData,
         code: wardFormData.code.toUpperCase().trim(),
       });
-      showToast(`Ruangan baru "${wardFormData.name}" berhasil ditambahkan.`);
+      const msg = created._mutationResult?.message || `Ruangan baru "${wardFormData.name}" berhasil ditambahkan.`;
+      showToast(msg, created._mutationResult?.cloudError ? 'error' : 'success');
     }
     setIsWardModalOpen(false);
   };
 
   const handleToggleWardStatus = async (ward: Ward) => {
     const newStatus = !ward.is_active;
-    await DataStore.updateWard(ward.id, { is_active: newStatus });
+    const res = await DataStore.updateWard(ward.id, { is_active: newStatus });
     showToast(
-      `Status ruangan "${ward.name}" diubah menjadi ${newStatus ? 'Aktif' : 'Nonaktif'}.`
+      res.cloudSynced
+        ? `Status ruangan "${ward.name}" diubah ke ${newStatus ? 'Aktif' : 'Nonaktif'} (Tersinkron ke Cloud).`
+        : `Status ruangan "${ward.name}" diubah ke ${newStatus ? 'Aktif' : 'Nonaktif'}.`
     );
   };
 
   const handleConfirmDeleteWard = async () => {
     if (!wardToDelete) return;
-    await DataStore.deleteWard(wardToDelete.id);
-    showToast(`Ruangan "${wardToDelete.name}" berhasil dihapus dari master data.`);
+    const res = await DataStore.deleteWard(wardToDelete.id);
+    showToast(res.message, res.cloudError ? 'error' : 'success');
     setWardToDelete(null);
   };
 

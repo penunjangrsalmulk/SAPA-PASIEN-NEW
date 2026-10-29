@@ -1055,9 +1055,28 @@ export const VisitInputModule: React.FC<VisitInputModuleProps> = ({
               <h3 className="text-base font-bold text-slate-900">
                 Kunjungan Berhasil Didokumentasikan!
               </h3>
-              <p className="text-xs text-slate-500">
-                Data telah tersimpan ke repositori sistem SAPA PASIEN RSUD Al-Mulk.
-              </p>
+              <div className="pt-1 flex justify-center">
+                <span
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border ${
+                    (createdVisitResult as unknown as { _cloudSynced?: boolean })._cloudSynced
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      (createdVisitResult as unknown as { _cloudSynced?: boolean })._cloudSynced
+                        ? 'bg-emerald-500 animate-pulse'
+                        : 'bg-amber-500'
+                    }`}
+                  />
+                  <span>
+                    {(createdVisitResult as unknown as { _cloudSynced?: boolean })._cloudSynced
+                      ? 'Tersinkronisasi ke Cloud Supabase & Vercel'
+                      : 'Tersimpan di Penyimpanan Lokal'}
+                  </span>
+                </span>
+              </div>
             </div>
 
             <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl font-mono text-xs">

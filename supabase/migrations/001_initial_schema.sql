@@ -1,10 +1,13 @@
 -- ====================================================================
 -- SAPA PASIEN — RSUD AL-MULK KOTA SUKABUMI
 -- Universal Cloud Database Schema & Realtime Setup (001_universal_schema.sql)
--- Mendukung Sinkronisasi Dua Arah Real-time antara Google AI Studio & Vercel
+-- Mendukung Sinkronisasi Penuh Dua Arah Real-time antara Google AI Studio & Vercel
 -- ====================================================================
 
--- 1. TABEL PENGATURAN APLIKASI & PROFIL RUMAH SAKIT (app_settings)
+-- 1. BERIKAN HAK AKSES SKEMA PUBLIC KE PERAN ANON & AUTHENTICATED
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+-- 2. TABEL PENGATURAN APLIKASI & PROFIL RUMAH SAKIT (app_settings)
 -- Menyimpan Profil RSUD Al-Mulk (nama, foto/logo, alamat, kontak), Master SLA, dan Kategori
 CREATE TABLE IF NOT EXISTS public.app_settings (
   key TEXT PRIMARY KEY,
@@ -12,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 2. TABEL PENGGUNA & HAK AKSES (profiles)
+-- 3. TABEL PENGGUNA & HAK AKSES (profiles)
 CREATE TABLE IF NOT EXISTS public.profiles (
   id TEXT PRIMARY KEY,
   full_name TEXT NOT NULL,
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 3. TABEL MASTER RUANGAN RAWAT INAP (wards)
+-- 4. TABEL MASTER RUANGAN RAWAT INAP (wards)
 CREATE TABLE IF NOT EXISTS public.wards (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -38,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.wards (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 4. TABEL DOKUMENTASI KUNJUNGAN (visits)
+-- 5. TABEL DOKUMENTASI KUNJUNGAN (visits)
 CREATE TABLE IF NOT EXISTS public.visits (
   id TEXT PRIMARY KEY,
   visit_number TEXT NOT NULL UNIQUE,
@@ -57,18 +60,18 @@ CREATE TABLE IF NOT EXISTS public.visits (
   psychological_notes TEXT,
   spiritual_observation TEXT NOT NULL,
   spiritual_notes TEXT,
-  comfort_score INTEGER CHECK (comfort_score IS NULL OR (comfort_score >= 1 AND comfort_score <= 5)),
-  cleanliness_score INTEGER CHECK (cleanliness_score IS NULL OR (cleanliness_score >= 1 AND cleanliness_score <= 5)),
-  communication_score INTEGER CHECK (communication_score IS NULL OR (communication_score >= 1 AND communication_score <= 5)),
-  responsiveness_score INTEGER CHECK (responsiveness_score IS NULL OR (responsiveness_score >= 1 AND responsiveness_score <= 5)),
-  overall_satisfaction_score INTEGER CHECK (overall_satisfaction_score IS NULL OR (overall_satisfaction_score >= 1 AND overall_satisfaction_score <= 5)),
+  comfort_score INTEGER,
+  cleanliness_score INTEGER,
+  communication_score INTEGER,
+  responsiveness_score INTEGER,
+  overall_satisfaction_score INTEGER,
   has_issue BOOLEAN NOT NULL DEFAULT false,
   general_notes TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 5. TABEL KELUHAN & MASALAH PASIEN (issues)
+-- 6. TABEL KELUHAN & MASALAH PASIEN (issues)
 CREATE TABLE IF NOT EXISTS public.issues (
   id TEXT PRIMARY KEY,
   visit_id TEXT NOT NULL,
@@ -97,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.issues (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 6. TABEL JEJAK AUDIT SISTEM (audit_logs)
+-- 7. TABEL JEJAK AUDIT SISTEM (audit_logs)
 CREATE TABLE IF NOT EXISTS public.audit_logs (
   id TEXT PRIMARY KEY,
   actor_id TEXT,
@@ -109,15 +112,20 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- 7. INDEKS KINERJA QUERY
+-- 8. INDEKS KINERJA QUERY CEPAT
 CREATE INDEX IF NOT EXISTS idx_visits_visited_at ON public.visits (visited_at DESC);
 CREATE INDEX IF NOT EXISTS idx_visits_ward_id ON public.visits (ward_id);
 CREATE INDEX IF NOT EXISTS idx_issues_visit_id ON public.issues (visit_id);
 CREATE INDEX IF NOT EXISTS idx_issues_status ON public.issues (status);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON public.audit_logs (created_at DESC);
 
--- 8. KEBIJAKAN KEAMANAN ROW LEVEL SECURITY (RLS)
--- Diaktifkan dengan hak akses publik (anon key) agar sinkronisasi antara AI Studio & Vercel berjalan lancar
+-- 9. BERIKAN HAK AKSES TABEL KE ROLE ANON & AUTHENTICATED
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+
+-- 10. KEBIJAKAN KEAMANAN ROW LEVEL SECURITY (RLS) DENGAN AKSES UNIVERSAL
 ALTER TABLE public.app_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.wards ENABLE ROW LEVEL SECURITY;
@@ -125,7 +133,6 @@ ALTER TABLE public.visits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.issues ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
--- Buat policy bebas hambatan untuk public anon key & authenticated
 DROP POLICY IF EXISTS "Settings universal access" ON public.app_settings;
 CREATE POLICY "Settings universal access" ON public.app_settings FOR ALL USING (true) WITH CHECK (true);
 
@@ -144,7 +151,7 @@ CREATE POLICY "Issues universal access" ON public.issues FOR ALL USING (true) WI
 DROP POLICY IF EXISTS "Audit logs universal access" ON public.audit_logs;
 CREATE POLICY "Audit logs universal access" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
 
--- 9. AKTIFKAN REALTIME PUBLICATION UNTUK SINKRONISASI OTOMATIS
+-- 11. AKTIFKAN REALTIME PUBLICATION UNTUK SINKRONISASI INSTAN ANTARA PERANGKAT
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -157,11 +164,10 @@ BEGIN
   END IF;
 EXCEPTION
   WHEN duplicate_object THEN
-    -- Table already in publication, ignore
     NULL;
 END $$;
 
--- 10. DATA BAWAAN AWAL RSUD AL-MULK
+-- 12. DATA BAWAAN AWAL MASTER RUANGAN RAWAT INAP
 INSERT INTO public.wards (id, name, code, floor, capacity) VALUES
   ('ward-01', 'Ruang Fatimah', 'FATIMAH', 1, 17),
   ('ward-02', 'Ruang Aisyah', 'AISYAH', 1, 17),
@@ -172,9 +178,25 @@ INSERT INTO public.wards (id, name, code, floor, capacity) VALUES
   ('ward-07', 'ICU', 'ICU', 1, 17)
 ON CONFLICT (id) DO NOTHING;
 
+-- 13. DATA BAWAAN AWAL PENGGUNA
 INSERT INTO public.profiles (id, full_name, role, department, phone, email, is_active) VALUES
   ('usr-admin-01', 'Dr. H. Ahmad Fauzi, Sp.PK', 'administrator', 'Manajemen Mutu & SIMRS', '0812-3456-7890', 'admin@rsudalmulk.id', true),
   ('usr-super-01', 'Ns. Siti Nurhaliza, S.Kep', 'supervisor', 'Supervisi Keperawatan & Pelayanan', '0813-9876-5432', 'supervisor@rsudalmulk.id', true),
   ('usr-staff-01', 'Budi Santoso, Amd.Kep', 'petugas', 'Tim Sapa Pasien Rawat Inap', '0815-1122-3344', 'petugas@rsudalmulk.id', true),
   ('usr-exec-01', 'dr. Hj. Endang Sulastri, MARS', 'pimpinan', 'Direksi RSUD Al-Mulk Kota Sukabumi', '0811-5566-7788', 'direksi@rsudalmulk.id', true)
 ON CONFLICT (id) DO NOTHING;
+
+-- 14. DATA BAWAAN AWAL PROFIL RUMAH SAKIT
+INSERT INTO public.app_settings (key, value) VALUES
+  ('hospital_profile', '{
+    "name": "RSUD Al-Mulk Kota Sukabumi",
+    "classification": "Rumah Sakit Umum Daerah Tipe D Pratama / Paripurna",
+    "address": "Jl. Pelabuhan II KM. 6, Kel. Cikondang, Kec. Citamiang, Kota Sukabumi, Jawa Barat",
+    "phone": "(0266) 625-1000 / Layanan SAPA PASIEN ext. 104",
+    "email": "rsudalmulk@sukabumikota.go.id",
+    "operational_status": "Aktif Penuh (Layanan 24 Jam)",
+    "vision": "Mewujudkan pelayanan rawat inap yang menjunjung tinggi empati, komunikasi humanis, pemenuhan kebutuhan spiritual dan sosiologis, serta penyelesaian setiap keluhan pasien secara tuntas demi kepuasan warga Kota Sukabumi.",
+    "logo_url": "/src/assets/images/rsud_almulk_logo_1792331924541.jpg",
+    "updated_at": "2026-10-19T00:00:00Z"
+  }'::jsonb)
+ON CONFLICT (key) DO NOTHING;

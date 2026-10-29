@@ -96,12 +96,18 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onOpenSupabaseModal 
           title="Klik untuk konfigurasi dan status Supabase"
         >
           {isLiveConnected ? (
-            <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+            <>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+            </>
           ) : (
-            <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+            <>
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <WifiOff className="w-3.5 h-3.5 text-amber-600" />
+            </>
           )}
           <span className="hidden md:inline">
-            {isLiveConnected ? 'Supabase Terhubung' : 'Database Lokal (Demo)'}
+            {isLiveConnected ? 'Supabase Online' : 'Database Lokal (Demo)'}
           </span>
           <span className="md:hidden">
             {isLiveConnected ? 'Online' : 'Lokal'}
