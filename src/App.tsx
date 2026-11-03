@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Shield, Database } from 'lucide-react';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileFloatingNavBar } from './components/layout/MobileFloatingNavBar';
 import { DashboardModule } from './features/dashboard/DashboardModule';
 import { VisitInputModule } from './features/visits/VisitInputModule';
 import { MonitoringModule } from './features/monitoring/MonitoringModule';
@@ -9,13 +9,12 @@ import { ReportsModule } from './features/reports/ReportsModule';
 import { SettingsModule } from './features/settings/SettingsModule';
 import { SupabaseConfigModal } from './components/modals/SupabaseConfigModal';
 import { WelcomeScreen } from './components/welcome/WelcomeScreen';
-import { DataStore, DEMO_ACCOUNTS } from './lib/dataStore';
+import { DataStore } from './lib/dataStore';
 import { UserProfile } from './types';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
   const [currentUser, setCurrentUser] = useState<UserProfile>(DataStore.getCurrentUser());
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
 
   // Welcome Screen visibility (default true on app load as requested)
@@ -43,40 +42,27 @@ export default function App() {
         />
       ) : (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 antialiased">
-          {/* Sidebar for Desktop & Mobile Drawer */}
+          {/* Desktop Fixed Sidebar (Hidden on mobile) */}
           <Sidebar
             currentTab={currentTab}
             onSelectTab={(tab) => setCurrentTab(tab)}
             userRole={currentUser.role}
-            isMobileOpen={isMobileMenuOpen}
-            onCloseMobile={() => setIsMobileMenuOpen(false)}
+            isMobileOpen={false}
+            onCloseMobile={() => {}}
             onOpenWelcomeScreen={() => setIsWelcomeScreenVisible(true)}
           />
 
           {/* Main Content Area */}
           <div className="md:pl-64 flex flex-col min-h-screen">
-            {/* Top Header */}
-            <div className="flex items-center">
-              {/* Mobile hamburger toggle */}
-              <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-3 text-slate-600 hover:text-slate-900 bg-white border-b border-r border-slate-200"
-                aria-label="Buka Menu"
-              >
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+            {/* Top Header (Clean Full-Width on Mobile & Desktop) */}
+            <Header
+              currentTab={currentTab}
+              onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
+              onOpenWelcomeScreen={() => setIsWelcomeScreenVisible(true)}
+            />
 
-              <div className="flex-1 min-w-0">
-                <Header
-                  currentTab={currentTab}
-                  onOpenSupabaseModal={() => setIsSupabaseModalOpen(true)}
-                  onOpenWelcomeScreen={() => setIsWelcomeScreenVisible(true)}
-                />
-              </div>
-            </div>
-
-            {/* Dynamic Main View */}
-            <main className="flex-1 pb-12">
+            {/* Dynamic Main View with Extra Bottom Padding for Mobile Floating Navigation */}
+            <main className="flex-1 pb-28 md:pb-12">
               {currentTab === 'dashboard' && (
                 <DashboardModule
                   onNavigateToVisits={() => setCurrentTab('visits')}
@@ -102,6 +88,14 @@ export default function App() {
               )}
             </main>
           </div>
+
+          {/* Floating Pill Bottom Navigation Bar for Mobile (Inspired by the reference image) */}
+          <MobileFloatingNavBar
+            currentTab={currentTab}
+            onSelectTab={(tab) => setCurrentTab(tab)}
+            userRole={currentUser.role}
+            onOpenWelcomeScreen={() => setIsWelcomeScreenVisible(true)}
+          />
         </div>
       )}
 
@@ -110,7 +104,6 @@ export default function App() {
         isOpen={isSupabaseModalOpen}
         onClose={() => setIsSupabaseModalOpen(false)}
         onConnectionChanged={() => {
-          // Re-trigger store update
           DataStore.init();
         }}
       />

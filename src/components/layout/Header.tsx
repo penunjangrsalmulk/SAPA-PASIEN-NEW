@@ -78,7 +78,7 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-4 px-6 py-3.5 bg-white/95 backdrop-blur-xs border-b border-pink-100">
+    <header className="sticky top-0 z-30 flex items-center justify-between gap-2.5 sm:gap-4 px-4 sm:px-6 py-3 sm:py-3.5 bg-white/95 backdrop-blur-xs border-b border-pink-100">
       {/* Zone 1: Current Module Title & Breadcrumb */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
