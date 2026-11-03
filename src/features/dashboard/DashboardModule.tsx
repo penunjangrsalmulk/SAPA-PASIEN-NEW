@@ -260,32 +260,39 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Hospital Banner & Quick Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-900 via-blue-800 to-teal-800 rounded-2xl p-6 text-white shadow-xs">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs font-medium text-blue-200">
-              <span>RSUD Al-Mulk Kota Sukabumi</span>
-              <span aria-hidden="true">·</span>
-              <span>Sistem Monitoring Kunjungan Rawat Inap</span>
+      {/* Hospital Banner & Quick Hero (Romantic Pink & Rose Nuance) */}
+      <div className="relative overflow-hidden bg-gradient-to-r from-pink-800 via-rose-700 to-rose-900 rounded-3xl p-6 sm:p-7 text-white shadow-lg shadow-pink-900/10 border border-pink-300/20">
+        {/* Soft Romantic Ambient Light Glows */}
+        <div className="absolute -top-16 -right-16 w-64 h-64 bg-pink-400/25 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-64 h-64 bg-rose-300/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-pink-200">
+              <span className="bg-pink-900/50 px-2.5 py-0.5 rounded-full border border-pink-400/30 backdrop-blur-xs">
+                RSUD Al-Mulk Kota Sukabumi
+              </span>
+              <span aria-hidden="true" className="text-pink-300">·</span>
+              <span className="text-pink-100 font-medium">Sistem Advokasi & Asuhan Rawat Inap</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-bold tracking-tight">
-              SAPA PASIEN — Humanis, Responsif, & Tuntas
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-white drop-shadow-xs">
+              SAPA PASIEN — Humanis, Empatis & Penuh Kasih
             </h2>
-            <p className="text-xs text-blue-100/90 max-w-2xl leading-relaxed">
-              Memantau kebutuhan holistik pasien rawat inap meliputi aspek sosiologis, psikologis, spiritual, dan kenyamanan fasilitas secara realtime.
+            <p className="text-xs text-pink-100/90 max-w-2xl leading-relaxed">
+              Mendampingi kebutuhan holistik pasien rawat inap meliputi aspek sosiologis, psikologis, spiritual, dan kenyamanan fasilitas dengan kehangatan dan ketuntasan asuhan.
             </p>
           </div>
+
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={onNavigateToVisits}
-              className="px-4 py-2 bg-white text-blue-900 font-semibold text-xs rounded-lg hover:bg-blue-50 transition-colors shadow-xs"
+              className="px-4 py-2.5 bg-white hover:bg-pink-50 text-pink-800 font-bold text-xs rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1.5"
             >
-              + Input Kunjungan Baru
+              <span>+ Input Kunjungan Baru</span>
             </button>
             <button
               onClick={onNavigateToMonitoring}
-              className="px-3.5 py-2 bg-blue-700/60 hover:bg-blue-700 text-white font-medium text-xs rounded-lg border border-blue-400/30 transition-colors"
+              className="px-4 py-2.5 bg-pink-900/40 hover:bg-pink-900/60 text-white font-semibold text-xs rounded-xl border border-pink-300/40 backdrop-blur-xs transition-all active:scale-95"
             >
               Lihat Monitoring Pasien
             </button>
@@ -296,7 +303,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({
       {/* Filter Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-          <Filter className="w-3.5 h-3.5 text-blue-600" />
+          <Filter className="w-3.5 h-3.5 text-pink-600" />
           <span>Filter Data Dashboard</span>
         </div>
 
