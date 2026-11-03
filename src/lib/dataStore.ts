@@ -1864,6 +1864,12 @@ export class DataStore {
           } else if (item.key === 'issue_categories' && Array.isArray(item.value)) {
             this.issueCategories = item.value;
             this.saveIssueCategories();
+          } else if (item.key === 'welcome_media_config' && item.value) {
+            try {
+              localStorage.setItem('sapa_welcome_media_config_v2', JSON.stringify(item.value));
+            } catch {
+              // quota safeguard
+            }
           }
         }
       }
@@ -1972,7 +1978,17 @@ export class DataStore {
 
     try {
       // 1. Push app_settings
-      const { error: errSettings } = await supabase.from('app_settings').upsert([
+      const storedMedia = typeof window !== 'undefined' ? localStorage.getItem('sapa_welcome_media_config_v2') : null;
+      let mediaConfigPayload: unknown = null;
+      if (storedMedia) {
+        try {
+          mediaConfigPayload = JSON.parse(storedMedia);
+        } catch {
+          // ignore
+        }
+      }
+
+      const settingsToUpsert: Array<{ key: string; value: any; updated_at: string }> = [
         {
           key: 'hospital_profile',
           value: this.hospitalProfile,
@@ -1988,7 +2004,17 @@ export class DataStore {
           value: this.issueCategories,
           updated_at: new Date().toISOString(),
         },
-      ]);
+      ];
+
+      if (mediaConfigPayload) {
+        settingsToUpsert.push({
+          key: 'welcome_media_config',
+          value: mediaConfigPayload,
+          updated_at: new Date().toISOString(),
+        });
+      }
+
+      const { error: errSettings } = await supabase.from('app_settings').upsert(settingsToUpsert);
 
       if (errSettings) {
         if (

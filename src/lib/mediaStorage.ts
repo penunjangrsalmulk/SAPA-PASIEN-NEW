@@ -1,11 +1,12 @@
 /**
- * Media Storage Helper using IndexedDB & Base64 / ObjectURL
+ * Media Storage Helper using IndexedDB, Base64 & Supabase Cloud Sync
  * Guarantees that uploaded videos and photos always display immediately
- * and persist across browser reloads.
+ * on local device AND sync across all laptops, phones, and Vercel users.
  */
 
 import hospitalInpatientCareImg from '../assets/images/hospital_inpatient_care_1792331925141.jpg';
 import rsudAlMulkLogoImg from '../assets/images/rsud_almulk_logo_1792331924541.jpg';
+import { getSupabaseClient, isSupabaseConfigured } from './supabase';
 
 export { hospitalInpatientCareImg, rsudAlMulkLogoImg };
 
@@ -105,11 +106,45 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
+/**
+ * Kompres gambar berukuran besar agar cepat diunggah ke Supabase
+ * dan ringan diunduh oleh HP dan laptop lain di Vercel
+ */
+function compressImage(dataUrl: string, maxDimension = 1920, quality = 0.85): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(dataUrl);
+    const img = new Image();
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width);
+          width = maxDimension;
+        } else {
+          width = Math.round((width * maxDimension) / height);
+          height = maxDimension;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return resolve(dataUrl);
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export class MediaStorage {
   private static cachedObjectUrl: string | null = null;
 
   /**
-   * Simpan file unggahan (foto atau video) ke IndexedDB dan buat DataURL/ObjectURL yang pasti muncul
+   * Simpan file unggahan (foto atau video) ke IndexedDB dan buat DataURL/ObjectURL yang pasti muncul,
+   * serta sinkronkan ke Supabase Cloud jika terhubung agar tampil di Vercel / perangkat lain.
    */
   static async saveUploadedMedia(
     file: File | Blob,
@@ -120,7 +155,7 @@ export class MediaStorage {
     const newObjectUrl = URL.createObjectURL(file);
     this.cachedObjectUrl = newObjectUrl;
 
-    // 2. Simpan file blob asli ke IndexedDB untuk persistensi antar-sesi
+    // 2. Simpan file blob asli ke IndexedDB untuk persistensi lokal
     try {
       const db = await openDB();
       const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -134,16 +169,27 @@ export class MediaStorage {
       console.warn('Could not write to IndexedDB:', dbErr);
     }
 
-    // 3. Untuk foto, baca sebagai base64 DataURL (bekerja 100% instan di browser)
+    // 3. Untuk foto, baca sebagai base64 DataURL
     let fallbackDataUrl = '';
     if (type === 'image') {
       try {
-        fallbackDataUrl = await new Promise<string>((resolve) => {
+        const rawDataUrl = await new Promise<string>((resolve) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = () => resolve('');
           reader.readAsDataURL(file);
         });
+
+        // Kompres jika file di atas 600KB agar ringan disinkronkan ke Supabase
+        if (rawDataUrl && file.size > 600 * 1024) {
+          try {
+            fallbackDataUrl = await compressImage(rawDataUrl, 1920, 0.85);
+          } catch {
+            fallbackDataUrl = rawDataUrl;
+          }
+        } else {
+          fallbackDataUrl = rawDataUrl;
+        }
       } catch {
         fallbackDataUrl = '';
       }
@@ -156,7 +202,7 @@ export class MediaStorage {
       id: 'custom-upload',
       type,
       url: activeUrl,
-      isBlob: true,
+      isBlob: !fallbackDataUrl,
       title: meta.title || 'SAPA PASIEN',
       subtitle: meta.subtitle || '“MELAYANI DENGAN SEPENUH HATI”',
       credit: meta.credit || 'RSUD AL-MULK KOTA SUKABUMI',
@@ -168,7 +214,6 @@ export class MediaStorage {
 
     // Simpan metadata ke localStorage
     try {
-      // Simpan data URL jika ukurannya wajar di bawah 3MB, jika lebih simpan pointer IndexedDB
       const persistUrl =
         fallbackDataUrl && fallbackDataUrl.length < 3 * 1024 * 1024
           ? fallbackDataUrl
@@ -185,6 +230,34 @@ export class MediaStorage {
       // quota safeguard
     }
 
+    // 4. OTOMATIS SINKRONKAN KE SUPABASE CLOUD
+    // Agar laptop lain, HP, dan pengunjung Vercel langsung melihat foto ini!
+    if (isSupabaseConfigured() && fallbackDataUrl) {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        Promise.resolve(
+          supabase.from('app_settings').upsert({
+            key: 'welcome_media_config',
+            value: {
+              ...config,
+              url: fallbackDataUrl,
+            },
+            updated_at: new Date().toISOString(),
+          })
+        )
+          .then((res) => {
+            if (res.error) {
+              console.warn('Gagal sinkron media ke Supabase Cloud:', res.error.message);
+            } else {
+              console.log('Media Welcome Screen berhasil disinkronkan ke Supabase Cloud untuk seluruh perangkat!');
+            }
+          })
+          .catch((err: unknown) => {
+            console.warn('Network error sync welcome media to Supabase:', err);
+          });
+      }
+    }
+
     return config;
   }
 
@@ -192,7 +265,6 @@ export class MediaStorage {
    * Simpan Preset atau URL eksternal
    */
   static savePresetMedia(config: WelcomeMediaConfig): void {
-    // Jangan cabut object URL jika masih digunakan oleh config aktif
     if (!config.isBlob && this.cachedObjectUrl && this.cachedObjectUrl.startsWith('blob:')) {
       URL.revokeObjectURL(this.cachedObjectUrl);
       this.cachedObjectUrl = null;
@@ -203,14 +275,63 @@ export class MediaStorage {
     } catch {
       // quota safeguard
     }
+
+    // Sinkronkan preset/URL ke Supabase Cloud
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        Promise.resolve(
+          supabase.from('app_settings').upsert({
+            key: 'welcome_media_config',
+            value: config,
+            updated_at: new Date().toISOString(),
+          })
+        )
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
   }
 
   /**
-   * Muat konfigurasi media aktif (memulihkan Blob dari IndexedDB bila perlu)
+   * Muat konfigurasi media aktif (memeriksa Supabase Cloud terlebih dahulu agar sinkron antar-laptop/HP)
    */
   static async loadActiveMedia(): Promise<WelcomeMediaConfig> {
     if (typeof window === 'undefined') return DEFAULT_MEDIA_CONFIG;
 
+    // 1. Prioritas Utama: Periksa dari Supabase Cloud (jika terhubung)
+    // Ini menjamin foto yang diunggah di satu laptop otomatis muncul di laptop & HP lain di Vercel!
+    if (isSupabaseConfigured()) {
+      try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const { data, error } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', 'welcome_media_config')
+            .maybeSingle();
+
+          if (!error && data && data.value && data.value.url) {
+            const remote = data.value as WelcomeMediaConfig;
+            // Pastikan subtitle baru diterapkan
+            if (!remote.subtitle || remote.subtitle.includes('KASIH SAYANG')) {
+              remote.subtitle = '“MELAYANI DENGAN SEPENUH HATI”';
+            }
+            // Simpan ke local cache agar saat offline tetap cepat
+            try {
+              localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(remote));
+            } catch {
+              // ignore
+            }
+            return remote;
+          }
+        }
+      } catch (cloudErr) {
+        console.warn('Could not fetch welcome media from cloud:', cloudErr);
+      }
+    }
+
+    // 2. Pemeriksaan dari LocalStorage
     const stored = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (!stored) {
       return DEFAULT_MEDIA_CONFIG;
@@ -219,7 +340,7 @@ export class MediaStorage {
     try {
       const parsed: WelcomeMediaConfig = JSON.parse(stored);
 
-      // Automatically migrate old default slogan to the new slogan requested by user
+      // Migrasi slogan lama ke slogan baru
       if (
         !parsed.subtitle ||
         parsed.subtitle === '“KASIH SAYANG, EMPATI & ASUHAN HUMANIS”' ||
@@ -228,7 +349,7 @@ export class MediaStorage {
         parsed.subtitle = '“MELAYANI DENGAN SEPENUH HATI”';
       }
 
-      // 1. Jika URL adalah DataURL base64 atau link web langsung, langsung gunakan!
+      // Jika URL adalah DataURL base64 atau link web langsung
       if (
         parsed.url &&
         (parsed.url.startsWith('data:') ||
@@ -238,7 +359,7 @@ export class MediaStorage {
         return parsed;
       }
 
-      // 2. Jika merupakan preset lokal yang menggunakan gambar bundel, pastikan URL valid
+      // Preset lokal yang menggunakan gambar bundel
       if (parsed.id === 'default-inpatient' || parsed.id === 'preset-inpatient') {
         return {
           ...parsed,
@@ -252,7 +373,7 @@ export class MediaStorage {
         };
       }
 
-      // 3. Jika disimpan sebagai pointer IndexedDB atau blob
+      // Disimpan sebagai pointer IndexedDB atau blob lokal
       if (parsed.isBlob || parsed.url === 'indexeddb://custom_media_blob_v2') {
         try {
           const db = await openDB();
@@ -268,7 +389,6 @@ export class MediaStorage {
           );
 
           if (record && record.blob) {
-            // Untuk foto, buat juga data URL jika memungkinkan
             if (record.type === 'image') {
               try {
                 const dataUrl = await new Promise<string>((resolve) => {
@@ -334,6 +454,18 @@ export class MediaStorage {
       // ignore
     }
     localStorage.removeItem(STORAGE_KEY_CONFIG);
+
+    if (isSupabaseConfigured()) {
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        Promise.resolve(
+          supabase.from('app_settings').delete().eq('key', 'welcome_media_config')
+        )
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+
     return DEFAULT_MEDIA_CONFIG;
   }
 }

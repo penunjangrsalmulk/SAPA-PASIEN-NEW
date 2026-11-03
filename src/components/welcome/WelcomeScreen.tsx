@@ -77,6 +77,14 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     const unsub = DataStore.subscribe(() => {
       setUsers(DataStore.getUsers());
       setIsCloudConnected(isSupabaseConfigured());
+      MediaStorage.loadActiveMedia().then((config) => {
+        setMediaConfig((prev) => {
+          if (prev.url !== config.url || prev.updatedAt !== config.updatedAt) {
+            return config;
+          }
+          return prev;
+        });
+      });
     });
 
     return () => unsub();
